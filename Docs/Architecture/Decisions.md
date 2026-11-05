@@ -13,12 +13,13 @@
 2. Generation은 1부터 시작하며 `default(EntityId)`는 무효 ID이다.
 3. 슬롯 데이터는 EntityId와 분리한다: `int[] generations`, `EntityState[] states` (배열 위치가 Index).
 4. 빈 슬롯은 free list(int 스택)로 관리한다.
-5. Generation은 `Release(id)` 안에서만 1 증가한다. `Create()`는 Generation을 변경하지 않는다.
+5. Generation은 `Release(id)` 안에서만 1 증가한다. `Create()` 안에는 `generations` 배열에 대한 쓰기(`=`, `++`)가 없어야 한다. 초기값 1은 배열 생성/확장 시점에 채운다.
 6. EntityState는 Alive / Dead / Released이다. Released는 "슬롯이 비어 있고 free list에 있음"을 뜻한다.
-7. Dead → Released는 `Release(id)`를 명시적으로 호출할 때만 가능하다. 타이머 등 자동 해제는 없다.
+7. `Release(id)`는 state가 Dead일 때만 동작한다. Alive나 Released 상태이면 아무것도 하지 않고 false를 반환한다. 자동 해제는 없다.
 8. EntityManager는 인스턴스 클래스이며 UnityEngine에 의존하지 않는다. Destroy와 사망 원인을 모른다.
 9. API는 Create(), IsAlive(id), GetState(id), MarkDead(id), Release(id)이다. 잘못된 ID나 잘못된 전이는 예외 없이 false를 반환한다.
 10. IsAlive(id)는 Index 범위, Generation 일치, state == Alive를 모두 확인한다.
+11. `MarkDead(id)`와 `Release(id)`의 반환 타입은 bool이다. 성공하면 true, 실패하면 false를 반환한다.
 
 ## 미결정 (임의로 정하지 않음)
 
