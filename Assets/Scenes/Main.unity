@@ -129,8 +129,9 @@ GameObject:
   m_Component:
   - component: {fileID: 403221928}
   - component: {fileID: 403221927}
-  - component: {fileID: 403221926}
   - component: {fileID: 403221929}
+  - component: {fileID: 403221931}
+  - component: {fileID: 403221930}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -138,22 +139,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &403221926
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 403221925}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 949e1965a03285c45b619b58442a463d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Prohect_DOD_Undergird.Player.PlayerMovement
-  moveSpeed: 5
-  sprintMultiplier: 2
-  rb: {fileID: 403221927}
-  _movement: {x: 0, y: 0}
 --- !u!50 &403221927
 Rigidbody2D:
   serializedVersion: 5
@@ -191,7 +176,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 24.02, y: 24.02, z: 24.02}
+  m_LocalScale: {x: 5, y: 5, z: 5}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -255,6 +240,35 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &403221930
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 403221925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e984064997704e54faf16b0a6b62299b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Prohect_DOD_Undergird.Player.PlayerMovement
+  moveSpeed: 5
+  sprintMultiplier: 2
+  dashSpeed: 15
+  dashDuration: 0.2
+  dashCooldown: 1
+--- !u!114 &403221931
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 403221925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d64f96b156734d847948d69f8d6f6a33, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Prohect_DOD_Undergird.Player.PlayerInputHandler
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0

@@ -3,26 +3,39 @@ using UnityEngine;
 namespace Prohect_DOD_Undergird.Player
 {
     /// <summary>
-    /// 플레이어의 입력(키 입력, Shift 등)을 처리하고 외부로 이동 방향 및 스프린트 상태를 전달합니다.
+    /// 플레이어의 키 입력을 처리하고 이동 방향과 스프린트 상태를 전달합니다.
     /// </summary>
+    [RequireComponent(typeof(PlayerMovement))]
     public class PlayerInputHandler : MonoBehaviour
     {
-        [SerializeField] private Vector2 movementDirection;
-        [SerializeField] private bool isSprinting;
+        private PlayerMovement movement;
 
-        // 외부 접근용 프로퍼티 제공
-        public Vector2 MovementDirection => movementDirection;
-        public bool IsSprinting => isSprinting;
+        public Vector2 MovementDirection { get; private set; }
+        public bool IsSprinting { get; private set; }
 
-        void Update()
+        private void Awake()
         {
+            movement = GetComponent<PlayerMovement>();
+        }
+
+        private void Update()
+        {
+            if (movement == null) return;
+
             float moveX = Input.GetAxisRaw("Horizontal");
             float moveY = Input.GetAxisRaw("Vertical");
 
-            // 이동 방향만 원본 그대로 전달 (정규화 및 속도 처리는 Movement에서 수행)
-            movementDirection = new Vector2(moveX, moveY);
+            MovementDirection = new Vector2(moveX, moveY);
 
-            isSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            IsSprinting =
+                Input.GetKey(KeyCode.LeftShift) ||
+                Input.GetKey(KeyCode.RightShift);
+
+            // Space 입력 시 현재 이동 방향으로 대시를 요청합니다.
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                movement.OnDashRequested(MovementDirection);
+            }
         }
     }
 }
