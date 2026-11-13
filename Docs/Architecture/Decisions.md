@@ -19,9 +19,11 @@
 8. EntityManager는 인스턴스 클래스이며 UnityEngine에 의존하지 않는다. Destroy와 사망 원인을 모른다.
 9. API는 Create(), IsAlive(id), GetState(id), MarkDead(id), Release(id)이다. 잘못된 ID나 잘못된 전이는 예외 없이 false를 반환한다.
 10. IsAlive(id)는 Index 범위, Generation 일치, state == Alive를 모두 확인한다.
+11. 초기 슬롯 용량은 128이며, 슬롯 부족 시 2배로 확장(Grow)한다.
+12. GetState(id)에 유효하지 않은 ID가 들어오면 예외 없이 Released를 반환한다.
+13. EntityId는 외부에서 임의로 유효한 ID를 생성하지 못하도록 생성자를 내부(internal)로 제한한다.
+14. Entity 스크립트 경로는 `Assets/Scripts/DOD/Entity/`이다.
 
 ## 미결정 (임의로 정하지 않음)
 
-- 배열 초기 용량과 확장 정책
-- 스크립트 폴더 실제 경로 (`Assets/Scripts`인지 확인 필요)
 - 이동, 입력, 물리 방식 (Rigidbody2D 여부, 입력 시스템)

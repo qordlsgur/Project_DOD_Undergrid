@@ -63,7 +63,7 @@ description: EntityManager, EntityId, Generation, free list 등 DOD 엔티티 �
    - `MarkDead(id)`
    - `Release(id)`
    - 잘못된 ID나 잘못된 전이는 예외 없이 false를 반환한다.
-   - 단, `GetState(id)`의 잘못된 ID 처리 방식은 별도 미결정 사항이다.
+   - `GetState(id)`에 유효하지 않은 ID가 들어오면 Released를 반환한다.
 
 10. `IsAlive(id)`는 다음 조건을 모두 확인한다.
     - Index 범위
@@ -74,15 +74,17 @@ description: EntityManager, EntityId, Generation, free list 등 DOD 엔티티 �
     - 성공하면 true
     - 실패하면 false
 
+12. 초기 슬롯 용량은 128이며, 부족 시 2배로 확장(Grow)한다.
+
+13. `EntityId`는 외부에서 임의 생성을 방지하도록 생성자를 내부(internal)로 제한한다.
+
+14. Entity 스크립트 경로는 `Assets/Scripts/DOD/Entity/`이다.
+
 ## 3. 미결정 사항
 
 다음 항목은 설계안을 작성할 때 사용자가 결정하기 전까지 임의로 정하지 않습니다.
 
-- 배열 초기 용량과 확장 정책
-- 스크립트 폴더 실제 경로
 - 이동 방식, 입력 방식, 물리 처리 방식 (새 설계를 제안할 때만 해당하며, 사용자가 수정 내용을 직접 지정한 확정 수정에는 적용하지 않음)
-- `GetState(id)`에 잘못된 ID가 전달되었을 때의 처리 방식
-- `Create()`의 구체적인 반환 타입 등 원본 문서에서 정하지 않은 API 세부 사항
 
 ## 4. 설계 검토 규칙
 
