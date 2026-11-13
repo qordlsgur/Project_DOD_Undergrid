@@ -57,11 +57,7 @@ namespace Prohect_DOD_Undergird.EditorTools
                 rb.gravityScale = 0f;
                 rb.freezeRotation = true;
 
-                // PlayerMovement 컴포넌트 추가
-                PlayerMovement movement = player.AddComponent<PlayerMovement>();
-
-                // [SerializeField] 필드에 직접 할당 (SerializedObject 사용 생략)
-                movement.rb = rb;
+               player.AddComponent<PlayerMovement>();
 
                 // Player를 Main 씬에 명시적으로 소속
                 SceneManager.MoveGameObjectToScene(player, mainScene);
