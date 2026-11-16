@@ -14,6 +14,7 @@
 | Entity (DOD) | EntityManager | 구현 완료 | Decisions.md 확정 명세 및 확장 로직 구현 완료 |
 | Entity (DOD) | EntityId | 구현 완료 | readonly struct 및 생성자 제한 구현 완료 |
 | Entity (DOD) | Entity EditMode Tests | 구현 완료 | 사용자 EditMode 테스트 15개 통과 확인 |
+| World (DOD) | 월드 그리드 및 바닥·벽 데이터 1단계 | 구현 완료 | Unity 비의존 연속 배열, 좌표 변환, 벽 내구도·파괴, 변경 셀 이벤트 구현; Unity EditMode 테스트 16개 전부 통과 사용자 확인 |
 | Combat | CombatManager & HealthData | 구현 완료 | DOD HealthData 단일 원본 유지; 사망 상태에서도 등록된 세대의 최대 체력을 조회하도록 보강; 관련 PlayMode 확인 완료 |
 | Combat | CombatReceiver | 구현 완료 | DOD 체력 데이터를 복제하지 않고 Custom Inspector에서 현재/최대 체력을 읽기 전용 표시; 피해와 체력 갱신 PlayMode 확인 완료 |
 | Combat | CombatBootstrap | 구현 완료 | Main 씬 공유 매니저 초기화 및 EntityManager 공유 PlayMode 확인 완료 |
