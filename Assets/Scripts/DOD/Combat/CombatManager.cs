@@ -175,7 +175,7 @@ namespace Prohect_DOD_Undergird.DOD.Combat
         /// </summary>
         public int GetMaxHealth(EntityId id)
         {
-            if (!IsValidAndRegistered(id))
+            if (!IsRegistered(id))
             {
                 return 0;
             }
@@ -213,6 +213,14 @@ namespace Prohect_DOD_Undergird.DOD.Combat
         /// </summary>
         private bool IsValidAndRegistered(EntityId id)
         {
+            return IsRegistered(id) && entityManager.IsAlive(id);
+        }
+
+        /// <summary>
+        /// ID 세대와 등록된 체력 데이터를 확인합니다. 사망 상태의 최대 체력 조회에도 사용합니다.
+        /// </summary>
+        private bool IsRegistered(EntityId id)
+        {
             if (id.Index < 0 || id.Index >= healths.Length)
             {
                 return false;
@@ -230,8 +238,7 @@ namespace Prohect_DOD_Undergird.DOD.Combat
                 return false;
             }
 
-            // EntityManager 기준으로도 살아있는지 확인
-            return entityManager.IsAlive(id);
+            return true;
         }
     }
 }

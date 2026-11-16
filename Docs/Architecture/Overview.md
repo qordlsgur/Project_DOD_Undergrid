@@ -147,3 +147,19 @@ MonoBehaviour 영역은 Unity 엔진과 게임 데이터를 연결합니다.
 아키텍처 변경은 `Docs/Workflow/Approval_Process.md`에 정의된 승인 절차를 따릅니다.
 
 변경이 완료되면 실제 코드와 일치하도록 이 문서를 갱신합니다.
+
+## 8. 무기 데이터 및 장착 구현 구조
+
+현재 구현된 무기 시스템 1단계는 플레이어의 10개 무기 슬롯과 장착 상태를 관리합니다.
+
+- `WeaponData`는 Unity `ScriptableObject`이며 무기 이름, 아이콘, 공격력, 공격 간격, 무기 종류를 보관합니다.
+- `WeaponSlot`은 한 슬롯의 `WeaponData` 참조를 보관합니다.
+- `WeaponManager`는 슬롯, 선택 슬롯, 현재 무기만 관리합니다. 실제 무기 참조가 달라질 때 `OnWeaponChanged`를 한 번 발생시킵니다.
+- `PlayerInputHandler`는 숫자키 1~0과 마우스 휠을 감지해 `WeaponManager`에 선택 요청을 전달합니다.
+- `WeaponView`는 `SpriteRenderer`를 갱신해 현재 무기 아이콘을 표시하며, 무기가 없거나 아이콘이 없으면 렌더러를 숨깁니다.
+- `WeaponAttack`은 입력된 공격 시작 시점과 반복 주기를 관리하고 `OnAttackRequested`로 무기 데이터를 전달합니다.
+- `WeaponData`는 근접 공격 형태와 Arc 범위·각도, Thrust 길이·폭을 보관합니다. `WeaponView.AimDirection`은 화면의 조준 방향을 읽기 전용으로 제공합니다.
+- `MeleeAttackResolver`는 공격 요청에 맞춰 최신 조준을 반영하고 Enemy Layer의 Collider를 조회합니다. 한 공격에서 `CombatReceiver`마다 한 번만 `ReceiveDamage`를 호출합니다.
+- Enemy Layer와 Player Resolver 연결은 추가했지만, 실제 Enemy 프리팹과 `CombatReceiver.Initialize()` 호출·CombatManager 주입은 아직 연결되지 않았습니다. 투사체 생성과 유도 기능도 미구현입니다.
+
+`WeaponData.asset` 무기 데이터 에셋은 존재합니다. Main 씬 Player 슬롯에 무기 데이터를 할당하는 연결은 아직 통합 단계에서 진행할 예정입니다.

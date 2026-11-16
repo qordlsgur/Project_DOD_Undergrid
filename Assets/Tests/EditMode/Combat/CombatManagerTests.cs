@@ -133,6 +133,7 @@ namespace Prohect_DOD_Undergird.DOD.Combat.Tests
             Assert.AreEqual(1, diedEventCount);
             Assert.AreEqual(EntityState.Dead, entityManager.GetState(id));
             Assert.IsTrue(combatManager.IsDead(id));
+            Assert.AreEqual(50, combatManager.GetMaxHealth(id));
         }
 
         /// <summary>

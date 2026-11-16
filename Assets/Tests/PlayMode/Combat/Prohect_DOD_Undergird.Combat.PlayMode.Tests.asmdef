@@ -1,0 +1,24 @@
+{
+    "name": "Prohect_DOD_Undergird.Combat.PlayMode.Tests",
+    "rootNamespace": "Prohect_DOD_Undergird.Combat.Tests",
+    "references": [
+        "Prohect_DOD_Undergird.Combat",
+        "Prohect_DOD_Undergird.DOD.Entity",
+        "Prohect_DOD_Undergird.DOD.Combat",
+        "Prohect_DOD_Undergird.Player.Weapons",
+        "UnityEngine.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
