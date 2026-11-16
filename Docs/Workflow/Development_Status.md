@@ -6,38 +6,50 @@
 
 | 시스템 | 하위 기능 | 상태 | 비고 |
 |---|---|---|---|
-| Player | WASD 이동 | 구현 완료 | 기존 구현 완료 |
-| Player | Shift 스프린트 | 구현 완료 | 기존 구현 완료 |
-| Player | Space 대시 (일반) | 사용자 확인 대기 | dashSpeed 상향 (10.0 -> 15.0) |
-| Player | 스프린트 중 대시 연계 | 사용자 확인 대기 | 스프린트 중 Space 대시 및 복귀 처리 |
-| Player | 대시 안전장치 (OnDisable) | 사용자 확인 대기 | 비활성화 시 대시 잠김 방지 |
-| Entity (DOD) | EntityManager | 사용자 확인 대기 | Decisions.md 확정 명세 및 확장 로직 구현 완료 |
-| Entity (DOD) | EntityId | 사용자 확인 대기 | readonly struct 및 생성자 제한 구현 완료 |
-| Entity (DOD) | Entity EditMode Tests | 사용자 확인 대기 | 15개 검증 항목 NUnit 단위 테스트 작성 완료 |
-| Combat | CombatManager & HealthData | 사용자 확인 대기 | 체력 관리, 피해/회복, 사망 판정, EntityId Generation 연동 구현 완료 |
-| Combat | CombatReceiver | 사용자 확인 대기 | MonoBehaviour 공통 수신 컴포넌트 구현 완료 |
-| Combat | Combat EditMode Tests | 사용자 확인 대기 | 13개 검증 항목 NUnit 단위 테스트 작성 완료 |
+| Player | WASD 이동 | 구현 완료 | 사용자 확인 완료 |
+| Player | Shift 스프린트 | 구현 완료 | 사용자 확인 완료 |
+| Player | Space 대시 (일반) | 구현 완료 | dashSpeed 상향 (10.0 → 15.0); 사용자 확인 완료 |
+| Player | 스프린트 중 대시 연계 | 구현 완료 | 스프린트 중 Space 대시 및 복귀 처리; 사용자 확인 완료 |
+| Player | 대시 안전장치 (OnDisable) | 구현 완료 | 비활성화 시 대시 잠김 방지; 사용자 확인 완료 |
+| Entity (DOD) | EntityManager | 구현 완료 | Decisions.md 확정 명세 및 확장 로직 구현 완료 |
+| Entity (DOD) | EntityId | 구현 완료 | readonly struct 및 생성자 제한 구현 완료 |
+| Entity (DOD) | Entity EditMode Tests | 구현 완료 | 사용자 EditMode 테스트 15개 통과 확인 |
+| Combat | CombatManager & HealthData | 구현 완료 | DOD HealthData 단일 원본 유지; 사망 상태에서도 등록된 세대의 최대 체력을 조회하도록 보강; 관련 PlayMode 확인 완료 |
+| Combat | CombatReceiver | 구현 완료 | DOD 체력 데이터를 복제하지 않고 Custom Inspector에서 현재/최대 체력을 읽기 전용 표시; 피해와 체력 갱신 PlayMode 확인 완료 |
+| Combat | CombatBootstrap | 구현 완료 | Main 씬 공유 매니저 초기화 및 EntityManager 공유 PlayMode 확인 완료 |
+| Combat | 테스트 적 초기화 및 피해 연결 | 구현 완료 | EnemyCombatInitializer가 사망 이벤트에서 적 제거를 요청하고 OnDestroy에서 Dead Entity Release; PlayMode 확인 완료 |
+| Combat | EnemyData | 구현 완료 | 종류별 ScriptableObject 설정 및 적 프리팹 연결; PlayMode 확인 완료 |
+| Combat | 일반 몬스터 대기·추적·조사 | 구현 완료 | EnemyData별 감지·추적 종료 범위와 조사 시간, EnemyChaseAI 상태 전환 및 마지막 발견 위치 조사; PlayMode 확인 완료 |
+| Combat | 일반 몬스터 다중 생성 및 종류별 데이터 | 구현 완료 | Slime/Goblin EnemyData와 프리팹, 종류별 생성 수 및 공유 매니저 초기화; 체력·이동·공격 독립 적용과 사망 정리 PlayMode 확인 완료 |
+| Combat | 일반 몬스터 공격 AI | 구현 완료 | EnemyData 공격력·사거리·간격 사용 및 Player CombatReceiver 피해; 사거리와 반복 공격 PlayMode 확인 완료 |
+| Combat | Slime 돌진·복귀 공격 | 구현 완료 | 인스턴스별 고정 복귀 기준점, 적중·빗나감 복귀, 경로 차단, 도착 후 1초 대기와 재공격; Slime/Goblin 동시 공격 독립성 PlayMode 테스트 13개 전부 통과 및 사용자 확인 완료 |
+| Combat | 플레이어 체력 및 사망 처리 | 구현 완료 | 공유 매니저에 최대 체력 100 등록; 사망 시 입력·이동·무기 조준·공격 중단 및 추가 피해 차단; 사용자 확인 완료 |
+| Combat | CombatReceiver 런타임 어셈블리 분리 | 사용자 확인 대기 | Combat asmdef 추가 및 Player.Weapons 참조 연결; 전투 PlayMode 확인 완료, 전체 Unity 컴파일 및 EditMode 결과 미확인 |
+| Combat | Combat EditMode Tests | 사용자 확인 대기 | 기존 테스트에 사망 후 최대 체력 유지 검증 추가; 이번 변경 테스트 미실행 |
+| Weapon | WeaponData 및 WeaponSlot | 사용자 확인 대기 | ScriptableObject 데이터와 10개 단축키 슬롯 구현 |
+| Weapon | 장착·교체 및 입력 | 사용자 확인 대기 | 숫자키 1~0, 빈 슬롯 비무장, 등록 무기 휠 순환, 변경 이벤트 구현 |
+| Weapon | WeaponView | 사용자 확인 대기 | 별도 SpriteRenderer 자식으로 아이콘 표시 및 비무장 표시 구현 |
+| Weapon | 공격 입력 및 반복 주기 | 구현 완료 | PlayerInputHandler 입력 전달, WeaponAttack의 즉시·반복 요청 및 무기 교체 취소; 사용자 확인 완료 |
+| Weapon | 근접 공격 판정 | 구현 완료 | Arc/Thrust Physics2D 판정, Enemy Layer 필터 및 CombatReceiver 피해 전달; 사용자 확인 완료 |
+| Weapon | 무기 시스템 EditMode Tests | 사용자 확인 대기 | 22개 작성; LayerMask Reflection 타입 불일치 수정 및 SetField 타입 검사 추가; standalone Roslyn 컴파일 성공, Unity Test Runner 미실행 |
 
 ## 2. 사용자 확인 대기 항목
 
-- **스프린트 중 대시 동작 및 속도 체감 검증**
-  - 스프린트(속도 10.0) 도중 Space 키 입력 시 순간 돌진 속도(15.0)로 가속되는지 확인
-  - 대시 완료(0.2초) 후 스프린트 키 유지 시 멈칫거림 없이 정상 스프린트 속도로 복귀하는지 확인
-  - 대시 도중 오브젝트 비활성화 후 재활성화 시 이동 불가 버그가 해결되었는지 확인
-- **Entity System EditMode 단위 테스트 실행 검증**
-  - Unity Editor의 Test Runner 창(Window > General > Test Runner)에서 `EntityManagerTests` 실행
-  - 15개 테스트 케이스(생명주기, LIFO FreeList, 배열 2배 확장, 동등성) 통과 여부 및 컴파일 정상 확인
-- **Combat System EditMode 단위 테스트 실행 검증**
-  - Unity Editor의 Test Runner 창에서 `CombatManagerTests` 실행
-  - 13개 테스트 케이스(피해 적용, 오버플로 방지 회복, 사망 판정, Generation 안전성, 배열 동반 확장) 통과 여부 확인
+- **무기 장착·교체 시스템 확인**
+  - Main 씬 Player의 1번 슬롯에 연결된 WeaponData.asset으로 숫자키 1 장착과 WeaponView 표시 확인
+  - 빈 슬롯(2~9, 0) 선택 시 비무장 처리 및 WeaponView 숨김 확인
+  - 마우스 휠이 빈 슬롯을 건너뛰고 양 끝에서 순환하는지 확인
+  - WeaponView 자식 위치와 무기 아이콘 크기·정렬 확인
+  - Unity EditMode Test Runner에서 무기 시스템 테스트 22개 실행
 
 ## 3. 다음 예정 작업
 
-- 플레이어 Collider2D 추가 및 물리 충돌 환경 구성
-- 사용자 확인 완료 후 `Entity` 및 `Combat` 시스템 "구현 완료" 상태 전환
-- 투사체 및 무기 시스템(피격 판정 연결) 기획 및 설계
+- 테스트 전용 적 연결을 정식 Enemy 프리팹 및 생성 시스템에 적용
 
 ## 4. 확인된 이슈 및 주의 사항
 
 - 네임스페이스 오타(`Prohect_DOD_Undergird`): 추후 사용자 승인 후 일괄 리팩토링 검토 필요
-- Unity Editor 컴파일 및 플레이 테스트는 AI가 직접 확인할 수 없으므로 사용자 확인 필요
+- Unity batchmode가 종료 코드 1로 끝나고 결과 XML을 생성하지 않아 Unity 컴파일 및 전체 EditMode 테스트 실행 결과를 확인하지 못함; standalone Roslyn 컴파일은 통과
+- Main 씬 테스트 생성기는 Slime·Goblin 프리팹을 각각 1마리, 2.0 간격으로 생성하고 TestEnemy는 종류별 목록이 없을 때 사용하는 단일 프리팹 fallback으로 연결됨; 정식 콘텐츠용 Enemy 프리팹 및 웨이브 스폰 시스템은 미구현
+- 테스트 적 생성 경로는 Main 씬 전용이며 정식 Enemy 프리팹 및 웨이브 생성 시스템은 미구현
+- 투사체 생성 및 유도 기능은 미구현
