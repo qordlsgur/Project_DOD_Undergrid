@@ -1,0 +1,25 @@
+{
+    "name": "Prohect_DOD_Undergird.World.Tests",
+    "rootNamespace": "Prohect_DOD_Undergird.World.Tests",
+    "references": [
+        "Prohect_DOD_Undergird.DOD.World",
+        "Prohect_DOD_Undergird.World",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

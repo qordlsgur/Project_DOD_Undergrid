@@ -163,3 +163,13 @@ MonoBehaviour 영역은 Unity 엔진과 게임 데이터를 연결합니다.
 - Enemy Layer와 Player Resolver 연결은 추가했지만, 실제 Enemy 프리팹과 `CombatReceiver.Initialize()` 호출·CombatManager 주입은 아직 연결되지 않았습니다. 투사체 생성과 유도 기능도 미구현입니다.
 
 `WeaponData.asset` 무기 데이터 에셋은 존재합니다. Main 씬 Player 슬롯에 무기 데이터를 할당하는 연결은 아직 통합 단계에서 진행할 예정입니다.
+
+## 9. 월드 그리드 Tilemap 연동
+
+- `Prohect_DOD_Undergird.DOD.World` 어셈블리는 Unity 의존성이 없는 `WorldGrid` 데이터 계층을 유지합니다.
+- `Prohect_DOD_Undergird.World` Unity 연동 어셈블리의 `WorldGridBootstrap`은 설정된 그리드 크기·셀 크기·원점으로 `WorldGrid`를 생성하고 초기 바닥 및 테스트 벽 데이터를 배치합니다.
+- `WorldGridTilemapView`는 Floor와 Wall Tilemap을 초기 블록 단위로 동기화한 후 `CellChanged`를 구독해 변경된 좌표만 반영합니다. 표시 Tile 참조가 동일하면 Tilemap을 다시 설정하지 않습니다.
+- Main 씬의 Grid 원점은 `(-32, -32)`, 셀 크기는 `(1, 1)`이며 64×64 셀을 사용합니다. Floor Tilemap에는 충돌을 두지 않고 Wall Tilemap에만 `TilemapCollider2D`를 연결합니다.
+- 임시 타일 에셋은 `Assets/Art/WorldTiles/`에 저장되며, 최종 그래픽은 Tile 참조를 교체해 적용할 수 있습니다.
+- 현재 초기 테스트 벽 배치는 플레이어와 Main 씬 테스트 몬스터의 시작 좌표보다 북쪽에 놓입니다. `PlayerMiningController`는 좌클릭 공통 행동을 장비 데이터와 WorldGrid 벽 피해로 연결하며, 플레이 중 돌벽 파괴·충돌 해제·통행·바닥 유지를 사용자 확인했습니다.
+- `PlayerFollowCamera`는 Main 씬의 기존 Orthographic Camera에서 플레이어를 부드럽게 추적하고 WorldGrid 경계를 따릅니다. 사용자는 추적과 경계 동작을 확인했으며, 달리기·대시 중 미세한 플레이어 Jitter는 미해결입니다.

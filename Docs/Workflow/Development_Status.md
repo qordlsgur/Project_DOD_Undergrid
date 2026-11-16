@@ -15,6 +15,9 @@
 | Entity (DOD) | EntityId | 구현 완료 | readonly struct 및 생성자 제한 구현 완료 |
 | Entity (DOD) | Entity EditMode Tests | 구현 완료 | 사용자 EditMode 테스트 15개 통과 확인 |
 | World (DOD) | 월드 그리드 및 바닥·벽 데이터 1단계 | 구현 완료 | Unity 비의존 연속 배열, 좌표 변환, 벽 내구도·파괴, 변경 셀 이벤트 구현; Unity EditMode 테스트 16개 전부 통과 사용자 확인 |
+| World (Unity) | Tilemap 렌더링 및 벽 충돌 2단계 | 사용자 확인 대기 | 64×64 Grid와 Floor/Wall Tilemap, 초기 블록 동기화 및 CellChanged 변경 셀 갱신 구현; 기존 Tile 색상·Collider를 보존하는 1×1 임시 Sprite 생성 및 연결 Editor 도구 추가, 실행과 Main 씬 확인 대기 |
+| World (Unity) | 플레이어 벽 채굴 및 장비 능력치 3단계 | 구현 완료 | 좌클릭 공통 행동 라우팅, 커서 셀·장비 사거리 기반 벽 선택, MiningToolData 능력치와 WorldGrid 피해 연결; 돌벽 파괴·충돌 해제·이동 가능·바닥 유지까지 실제 플레이 사용자 확인 완료 |
+| World (Unity) | 플레이어 추적 카메라 | 구현 완료 | 기존 Main Camera의 Player 부드러운 추적과 WorldGrid 경계 보정; 카메라 시작 정렬 및 실제 추적·경계 동작 사용자 확인 완료 |
 | Combat | CombatManager & HealthData | 구현 완료 | DOD HealthData 단일 원본 유지; 사망 상태에서도 등록된 세대의 최대 체력을 조회하도록 보강; 관련 PlayMode 확인 완료 |
 | Combat | CombatReceiver | 구현 완료 | DOD 체력 데이터를 복제하지 않고 Custom Inspector에서 현재/최대 체력을 읽기 전용 표시; 피해와 체력 갱신 PlayMode 확인 완료 |
 | Combat | CombatBootstrap | 구현 완료 | Main 씬 공유 매니저 초기화 및 EntityManager 공유 PlayMode 확인 완료 |
@@ -36,6 +39,14 @@
 
 ## 2. 사용자 확인 대기 항목
 
+- **월드 Tilemap 렌더링 및 벽 충돌 2단계 확인**
+  - Main 씬 진입 시 64×64 Ground 바닥과 초기 Stone 테스트 벽이 표시되는지 확인
+  - Grid Transform 원점 `(-32, -32)` 및 셀 크기 `(1, 1)`가 WorldGrid 좌표 변환과 일치하는지 확인
+  - Player와 테스트 몬스터 시작 위치가 초기 벽과 겹치지 않는지 확인
+  - Wall Tilemap만 TilemapCollider2D를 가지며 벽이 Rigidbody2D 이동을 막는지 확인
+  - WorldGrid에서 벽을 파괴했을 때 Wall Tile과 Collider가 제거되고 Ground 바닥은 유지되는지 확인
+  - Main 씬에서 WorldGrid 변경 후 Tilemap 벽 제거와 Floor 유지 동작 확인
+
 - **무기 장착·교체 시스템 확인**
   - Main 씬 Player의 1번 슬롯에 연결된 WeaponData.asset으로 숫자키 1 장착과 WeaponView 표시 확인
   - 빈 슬롯(2~9, 0) 선택 시 비무장 처리 및 WeaponView 숨김 확인
@@ -45,11 +56,12 @@
 
 ## 3. 다음 예정 작업
 
-- 테스트 전용 적 연결을 정식 Enemy 프리팹 및 생성 시스템에 적용
+- Player 이동·달리기·대시 중 미세 Jitter 원인 분석
 
 ## 4. 확인된 이슈 및 주의 사항
 
 - 네임스페이스 오타(`Prohect_DOD_Undergird`): 추후 사용자 승인 후 일괄 리팩토링 검토 필요
+- Player가 달리기·대시할 때 미세한 Jitter가 관찰되었으며 원인 분석 및 수정은 미완료
 - Unity batchmode가 종료 코드 1로 끝나고 결과 XML을 생성하지 않아 Unity 컴파일 및 전체 EditMode 테스트 실행 결과를 확인하지 못함; standalone Roslyn 컴파일은 통과
 - Main 씬 테스트 생성기는 Slime·Goblin 프리팹을 각각 1마리, 2.0 간격으로 생성하고 TestEnemy는 종류별 목록이 없을 때 사용하는 단일 프리팹 fallback으로 연결됨; 정식 콘텐츠용 Enemy 프리팹 및 웨이브 스폰 시스템은 미구현
 - 테스트 적 생성 경로는 Main 씬 전용이며 정식 Enemy 프리팹 및 웨이브 생성 시스템은 미구현

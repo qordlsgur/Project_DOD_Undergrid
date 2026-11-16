@@ -1,0 +1,16 @@
+{
+    "name": "Prohect_DOD_Undergird.World",
+    "rootNamespace": "Prohect_DOD_Undergird.World",
+    "references": [
+        "Prohect_DOD_Undergird.DOD.World"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

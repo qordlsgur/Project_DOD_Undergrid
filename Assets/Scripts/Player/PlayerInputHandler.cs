@@ -1,4 +1,5 @@
 using UnityEngine;
+using Prohect_DOD_Undergird.World;
 
 namespace Prohect_DOD_Undergird.Player
 {
@@ -8,6 +9,7 @@ namespace Prohect_DOD_Undergird.Player
     [RequireComponent(typeof(PlayerMovement))]
     [RequireComponent(typeof(WeaponManager))]
     [RequireComponent(typeof(WeaponAttack))]
+    [RequireComponent(typeof(PlayerMiningController))]
     public class PlayerInputHandler : MonoBehaviour
     {
         // 키 배열은 프레임마다 생성하지 않고 숫자 입력을 슬롯 순서에 맞춰 검사합니다.
@@ -26,6 +28,7 @@ namespace Prohect_DOD_Undergird.Player
         private PlayerMovement movement;
         private WeaponManager weaponManager;
         private WeaponAttack weaponAttack;
+        private PlayerMiningController miningController;
 
         public Vector2 MovementDirection { get; private set; }
         public bool IsSprinting { get; private set; }
@@ -36,6 +39,7 @@ namespace Prohect_DOD_Undergird.Player
             movement = GetComponent<PlayerMovement>();
             weaponManager = GetComponent<WeaponManager>();
             weaponAttack = GetComponent<WeaponAttack>();
+            miningController = GetComponent<PlayerMiningController>();
         }
 
         private void Update()
@@ -60,8 +64,11 @@ namespace Prohect_DOD_Undergird.Player
 
             HandleWeaponInput();
 
-            // Input.GetMouseButton(0)은 마우스 왼쪽 버튼을 누르고 있는 동안 매 프레임 true를 반환합니다.
-            IsAttackHeld = Input.GetMouseButton(0);
+            // 좌클릭은 가까운 벽 채굴이 먼저 소비하고, 대상이 없을 때만 기존 무기 공격으로 전달합니다.
+            bool primaryActionHeld = Input.GetMouseButton(0);
+            bool isMiningAction = miningController != null &&
+                                  miningController.HandlePrimaryAction(primaryActionHeld, Input.mousePosition);
+            IsAttackHeld = primaryActionHeld && !isMiningAction;
             if (weaponAttack != null)
             {
                 weaponAttack.SetAttackInput(IsAttackHeld);
