@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Prohect_DOD_Undergird.World;
 
@@ -33,6 +34,7 @@ namespace Prohect_DOD_Undergird.Player
         public Vector2 MovementDirection { get; private set; }
         public bool IsSprinting { get; private set; }
         public bool IsAttackHeld { get; private set; }
+        public event Action InventoryToggleRequested;
 
         private void Awake()
         {
@@ -44,6 +46,11 @@ namespace Prohect_DOD_Undergird.Player
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.Tab))
+            {
+                InventoryToggleRequested?.Invoke();
+            }
+
             if (movement != null)
             {
                 float moveX = Input.GetAxisRaw("Horizontal");

@@ -3,51 +3,95 @@ using System;
 namespace Prohect_DOD_Undergird.DOD.World
 {
     /// <summary>
-    /// 플레이어가 획득한 월드 자원 수량을 Unity 객체와 분리해 보관합니다.
-    /// 배열 인덱스는 자원 enum 값과 같아 자원 조회가 일정한 비용으로 처리됩니다.
+    /// 기존 월드 자원 API를 일반 슬롯 인벤토리에 연결하는 호환 계층입니다.
+    /// 수량을 별도로 저장하지 않고 SlotInventory의 실제 슬롯에서 계산합니다.
     /// </summary>
     public sealed class WorldResourceInventory
     {
-        private static readonly int ResourceTypeCapacity = GetResourceTypeCapacity();
-        private readonly int[] amounts = new int[ResourceTypeCapacity];
+        private static readonly InventoryItemDefinition[] DefaultItemDefinitions =
+        {
+            new InventoryItemDefinition(new ItemId(1001), 999),
+            new InventoryItemDefinition(new ItemId(1002), 999)
+        };
 
-        /// <summary>지정한 자원의 현재 보유 수량을 반환합니다.</summary>
+        private static readonly WorldResourceItemDefinition[] DefaultResourceMappings =
+        {
+            new WorldResourceItemDefinition(WorldResourceType.Copper, new ItemId(1001)),
+            new WorldResourceItemDefinition(WorldResourceType.Iron, new ItemId(1002))
+        };
+
+        private readonly SlotInventory slots;
+        private readonly WorldResourceItemDefinition[] resourceMappings;
+
+        /// <summary>기존 호출부와 단위 테스트를 위한 기본 40칸 자원 인벤토리를 만듭니다.</summary>
+        public WorldResourceInventory()
+            : this(new SlotInventory(40, DefaultItemDefinitions), DefaultResourceMappings)
+        {
+        }
+
+        /// <summary>플레이어 슬롯 데이터와 월드 자원-ID 매핑을 공유하는 조회 계층을 만듭니다.</summary>
+        public WorldResourceInventory(
+            SlotInventory slotInventory,
+            WorldResourceItemDefinition[] mappings)
+        {
+            slots = slotInventory ?? throw new ArgumentNullException(nameof(slotInventory));
+            if (mappings == null)
+            {
+                throw new ArgumentNullException(nameof(mappings));
+            }
+
+            resourceMappings = (WorldResourceItemDefinition[])mappings.Clone();
+        }
+
+        /// <summary>지정 자원에 대응하는 아이템이 가진 모든 슬롯 수량을 반환합니다.</summary>
         public int GetAmount(WorldResourceType resourceType)
         {
-            int index = (int)resourceType;
-            return IsValidResourceIndex(resourceType, index) ? amounts[index] : 0;
+            return TryGetItemId(resourceType, out ItemId itemId) ? slots.GetTotalCount(itemId) : 0;
         }
 
-        /// <summary>양수 수량을 추가하며 잘못된 종류나 int 범위 초과는 거부합니다.</summary>
+        /// <summary>광물 파괴 보상을 전체 수량으로 담을 수 있는지 슬롯 변경 없이 확인합니다.</summary>
+        public bool CanAdd(WorldResourceType resourceType, int amount)
+        {
+            return TryGetItemId(resourceType, out ItemId itemId) && slots.CanAdd(itemId, amount);
+        }
+
+        /// <summary>기존 월드 자원 종류를 매핑된 아이템 슬롯에 추가합니다.</summary>
         public bool TryAdd(WorldResourceType resourceType, int amount)
         {
-            int index = (int)resourceType;
-            if (!IsValidResourceIndex(resourceType, index) || amount <= 0 ||
-                amounts[index] > int.MaxValue - amount)
-            {
-                return false;
-            }
-
-            amounts[index] += amount;
-            return true;
+            return TryGetItemId(resourceType, out ItemId itemId) && slots.TryAdd(itemId, amount);
         }
 
-        private static int GetResourceTypeCapacity()
+        /// <summary>채굴의 마지막 타격 중 보상 공간이 다른 슬롯 작업에 사용되지 않도록 예약합니다.</summary>
+        public bool TryReserveAdd(WorldResourceType resourceType, int amount)
         {
-            Array resourceTypes = Enum.GetValues(typeof(WorldResourceType));
-            int maximumIndex = 0;
-            foreach (WorldResourceType resourceType in resourceTypes)
-            {
-                maximumIndex = Math.Max(maximumIndex, (int)resourceType);
-            }
-
-            return maximumIndex + 1;
+            return TryGetItemId(resourceType, out ItemId itemId) && slots.TryReserveAdd(itemId, amount);
         }
 
-        private static bool IsValidResourceIndex(WorldResourceType resourceType, int index)
+        /// <summary>벽 파괴가 확정된 뒤 예약 수량을 실제 슬롯에 반영합니다.</summary>
+        public bool CommitReservedAdd(WorldResourceType resourceType, int amount)
         {
-            return index > 0 && index < ResourceTypeCapacity &&
-                   Enum.IsDefined(typeof(WorldResourceType), resourceType);
+            return TryGetItemId(resourceType, out ItemId itemId) && slots.CommitReservedAdd(itemId, amount);
+        }
+
+        /// <summary>벽 피해가 실패했거나 파괴되지 않았을 때 예약을 취소합니다.</summary>
+        public bool CancelReservedAdd(WorldResourceType resourceType, int amount)
+        {
+            return TryGetItemId(resourceType, out ItemId itemId) && slots.CancelReservedAdd(itemId, amount);
+        }
+
+        private bool TryGetItemId(WorldResourceType resourceType, out ItemId itemId)
+        {
+            for (int i = 0; i < resourceMappings.Length; i++)
+            {
+                if (resourceMappings[i].ResourceType == resourceType)
+                {
+                    itemId = resourceMappings[i].ItemId;
+                    return true;
+                }
+            }
+
+            itemId = default;
+            return false;
         }
     }
 }

@@ -15,22 +15,56 @@ namespace Prohect_DOD_Undergird.World
         [SerializeField] private WorldGridBootstrap worldGridBootstrap;
         [SerializeField] private WorldMiningToolData equippedTool;
         [SerializeField] private Camera miningCamera;
+        [SerializeField] private PlayerInventory playerInventory;
 
         private WorldGrid gridData;
         private WorldGridWorld chunkWorld;
-        private readonly WorldResourceInventory resourceInventory = new WorldResourceInventory();
+        private WorldResourceInventory fallbackResourceInventory;
         private float nextMiningTime;
         private bool miningActionClaimed;
 
         public WorldMiningToolData EquippedTool => equippedTool;
-        /// <summary>채굴로 획득한 자원의 현재 수량을 제공하는 DOD 데이터입니다.</summary>
-        public WorldResourceInventory ResourceInventory => resourceInventory;
+        /// <summary>슬롯 수량을 월드 자원 종류로 조회하는 공유 호환 계층입니다.</summary>
+        public WorldResourceInventory ResourceInventory
+        {
+            get
+            {
+                EnsureInventoryReference();
+                return playerInventory != null
+                    ? playerInventory.ResourceInventory
+                    : fallbackResourceInventory;
+            }
+        }
 
         private void Awake()
         {
+            EnsureInventoryReference();
+
             if (miningCamera == null)
             {
                 miningCamera = Camera.main;
+            }
+        }
+
+        /// <summary>
+        /// Unity 생명주기 호출 여부와 무관하게 공유 인벤토리 참조를 준비합니다.
+        /// EditMode 테스트처럼 Awake 실행이 보장되지 않는 호출 경로도 같은 데이터를 사용합니다.
+        /// </summary>
+        private void EnsureInventoryReference()
+        {
+            if (playerInventory == null && fallbackResourceInventory == null)
+            {
+                playerInventory = GetComponent<PlayerInventory>();
+                if (playerInventory == null)
+                {
+                    // PlayerInventory가 없는 기존 테스트·도구 경로도 같은 슬롯 자료구조를 사용합니다.
+                    fallbackResourceInventory = new WorldResourceInventory();
+                }
+            }
+
+            if (playerInventory != null && !playerInventory.IsInitialized)
+            {
+                playerInventory.Initialize();
             }
         }
 
@@ -215,35 +249,63 @@ namespace Prohect_DOD_Undergird.World
             WorldCellCoordinate worldCoordinate)
         {
             WorldWallData wallBefore;
-            bool wasDestroyed;
             if (chunkWorld != null)
             {
-                if (!chunkWorld.TryGetWall(worldCoordinate, out wallBefore, out _) ||
-                    !chunkWorld.TryDamageWall(
-                        worldCoordinate,
-                        equippedTool.MiningPower,
-                        out _,
-                        out wasDestroyed,
-                        out _))
+                if (!chunkWorld.TryGetWall(worldCoordinate, out wallBefore, out _))
                 {
                     return false;
                 }
             }
-            else if (!gridData.TryGetWall(localCoordinate, out wallBefore) ||
-                     !gridData.TryDamageWall(
-                         localCoordinate,
-                         equippedTool.MiningPower,
-                         out _,
-                         out wasDestroyed))
+            else if (!gridData.TryGetWall(localCoordinate, out wallBefore))
             {
                 return false;
             }
 
-            if (wasDestroyed && wallBefore.ResourceType != WorldResourceType.None)
+            bool expectsOreReward = wallBefore.ResourceType != WorldResourceType.None &&
+                                    wallBefore.CurrentDurability <= equippedTool.MiningPower;
+            WorldResourceInventory resourceInventory = ResourceInventory;
+            if (expectsOreReward &&
+                (resourceInventory == null ||
+                 !resourceInventory.TryReserveAdd(wallBefore.ResourceType, wallBefore.ResourceAmount)))
             {
-                // 보상은 실제로 벽을 파괴한 입력에서만 한 번 지급합니다.
-                // 청크 재생성은 변경 데이터만 복원하므로 생성 과정에서 보상이 다시 지급되지 않습니다.
-                if (resourceInventory.TryAdd(wallBefore.ResourceType, wallBefore.ResourceAmount) &&
+                return false;
+            }
+
+            bool damageApplied;
+            bool wasDestroyed;
+            if (chunkWorld != null)
+            {
+                damageApplied = chunkWorld.TryDamageWall(
+                    worldCoordinate,
+                    equippedTool.MiningPower,
+                    out _,
+                    out wasDestroyed,
+                    out _);
+            }
+            else
+            {
+                damageApplied = gridData.TryDamageWall(
+                    localCoordinate,
+                    equippedTool.MiningPower,
+                    out _,
+                    out wasDestroyed);
+            }
+
+            if (!damageApplied)
+            {
+                if (expectsOreReward)
+                {
+                    resourceInventory.CancelReservedAdd(wallBefore.ResourceType, wallBefore.ResourceAmount);
+                }
+
+                return false;
+            }
+
+            if (expectsOreReward && wasDestroyed)
+            {
+                // 예약은 월드 피해 이벤트 도중 다른 호출이 보상 공간을 소비하지 않도록 하며,
+                // 실제 슬롯 반영은 WorldGrid가 파괴를 확정한 뒤에만 수행합니다.
+                if (resourceInventory.CommitReservedAdd(wallBefore.ResourceType, wallBefore.ResourceAmount) &&
                     EnableMiningRewardLogs)
                 {
                     int totalAmount = resourceInventory.GetAmount(wallBefore.ResourceType);
@@ -251,6 +313,10 @@ namespace Prohect_DOD_Undergird.World
                         $"[MiningReward] 자원: {wallBefore.ResourceType}, 획득 수량: {wallBefore.ResourceAmount}, 현재 보유량: {totalAmount}",
                         this);
                 }
+            }
+            else if (expectsOreReward)
+            {
+                resourceInventory.CancelReservedAdd(wallBefore.ResourceType, wallBefore.ResourceAmount);
             }
 
             return true;

@@ -20,6 +20,7 @@
 | World (DOD) | 청크 데이터 저장소 및 월드 절대 좌표 API 3-A | 사용자 확인 대기 | 청크별 WorldGrid 저장소, Unloaded/Queued/Generating/Ready/Failed 상태, 별도 표시 상태, 부분 청크 bounds 처리 및 미준비 조회 상태를 명시하는 API 추가; 신규 EditMode 테스트 작성, Unity Test Runner 확인 대기 |
 | World (DOD) | 청크 지형 생성 및 변경 데이터 복원 3-B | 사용자 확인 대기 | 절대 셀 좌표 기반 결정적 Noise·동굴·청크 BFS 생성 파이프라인 추가; 플레이어 벽 변경만 청크별 메모리 델타로 저장하고 재생성 시 Ready 전 복원; 경계·회귀 테스트 포함 관련 World 테스트 49개 standalone .NET 실행 통과, Unity 확인 대기 |
 | World (DOD/Unity) | 광물 생성 및 자원 수집 4-A | 구현 완료 | Seed·절대 셀 좌표 기반 구리·철 광맥 생성, 청크 변경 델타에 보상 정보 보존, 파괴 시 자원 수량 지급 및 광맥별 색상 표시; Unity 테스트 사용자 확인 완료 |
+| World (DOD/Unity) | 슬롯 기반 인벤토리 4-B | 구현 완료 | 40칸 슬롯 데이터, 정수 ItemId 1001/1002, 최대 중첩 999, 공간 예약 기반 광맥 마지막 타격 거부, Tab 토글 uGUI, 구리·철 아이콘 및 커서 추적 Tooltip 구현; 슬롯·보상·아이콘·이름·수량 표시와 Tooltip 동작 Unity 확인 완료 |
 | World (Unity) | 청크별 Tilemap 표시·해제 및 Collider 연동 3-C | 사용자 확인 대기 | Ready 청크의 절대 월드 위치 표시, 청크 단위 제거·재표시, Store 표시 상태 및 절대 셀 변경 이벤트 연결; Collider 형상 갱신과 EditMode/PlayMode 테스트 추가. DOD World standalone .NET 테스트 49개 통과; Unity 테스트는 미실행 |
 | World (Unity) | Tilemap 렌더링 및 벽 충돌 2단계 | 사용자 확인 대기 | Floor/Wall Tilemap, 초기 블록 동기화 및 CellChanged 변경 셀 갱신 구현; 기존 Tile 색상·Collider를 보존하는 1×1 임시 Sprite 생성 및 연결 Editor 도구 추가. 기존 전체 월드 경로는 64×64 비교 설정을 유지하고 Main 씬은 512×512 스트리밍 모드 사용; Unity 확인 대기 |
 | World (Unity) | 플레이어 벽 채굴 및 장비 능력치 3단계 | 구현 완료 | 좌클릭 공통 행동 라우팅, 커서 셀·장비 사거리 기반 벽 선택, MiningToolData 능력치와 WorldGrid 피해 연결; 돌벽 파괴·충돌 해제·이동 가능·바닥 유지까지 실제 플레이 사용자 확인 완료 |

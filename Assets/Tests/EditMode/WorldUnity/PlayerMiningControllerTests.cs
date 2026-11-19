@@ -16,13 +16,18 @@ namespace Prohect_DOD_Undergird.World.Tests
         private PlayerMiningController miningController;
         private WorldMiningToolData toolData;
         private WorldMiningToolData strongerTool;
+        private InventoryItemData copperItem;
+        private InventoryItemData ironItem;
+        private PlayerInventory playerInventory;
         private WorldGrid grid;
 
         [SetUp]
         public void SetUp()
         {
             playerObject = new GameObject("Mining Test Player");
+            playerObject.SetActive(false);
             playerObject.transform.position = new Vector3(0.5f, 0.5f, 0f);
+            CreatePlayerInventory(playerObject, 40, 999);
             miningController = playerObject.AddComponent<PlayerMiningController>();
             toolData = ScriptableObject.CreateInstance<WorldMiningToolData>();
             SetToolField("miningPower", 2);
@@ -34,6 +39,7 @@ namespace Prohect_DOD_Undergird.World.Tests
             Assert.IsTrue(grid.TryPlaceWall(new WorldGridCoordinate(1, 0), WallType.Stone, 10));
             Assert.IsTrue(grid.TryPlaceWall(new WorldGridCoordinate(2, 0), WallType.Soil, 10));
             Assert.IsTrue(miningController.Initialize(grid));
+            playerObject.SetActive(true);
         }
 
         [TearDown]
@@ -44,6 +50,16 @@ namespace Prohect_DOD_Undergird.World.Tests
             if (strongerTool != null)
             {
                 Object.DestroyImmediate(strongerTool);
+            }
+
+            if (copperItem != null)
+            {
+                Object.DestroyImmediate(copperItem);
+            }
+
+            if (ironItem != null)
+            {
+                Object.DestroyImmediate(ironItem);
             }
         }
 
@@ -143,6 +159,91 @@ namespace Prohect_DOD_Undergird.World.Tests
             Assert.IsTrue(miningController.TryMineAtWorldPosition(new Vector2(1.5f, 0.5f)));
             Assert.AreEqual(0, miningController.ResourceInventory.GetAmount(WorldResourceType.Copper));
             Assert.AreEqual(0, miningController.ResourceInventory.GetAmount(WorldResourceType.Iron));
+        }
+
+        [Test]
+        public void PlayerInventory_UsesConfiguredIdsAndMaximumStackFromItemData()
+        {
+            Assert.AreEqual(40, playerInventory.Inventory.Capacity);
+            Assert.IsTrue(playerInventory.TryAdd(new ItemId(1001), 1000));
+            Assert.IsTrue(playerInventory.TryGetSlot(0, out InventorySlot firstStack));
+            Assert.IsTrue(playerInventory.TryGetSlot(1, out InventorySlot secondStack));
+
+            Assert.AreEqual(new ItemId(1001), firstStack.ItemId);
+            Assert.AreEqual(999, firstStack.Amount);
+            Assert.AreEqual(new ItemId(1001), secondStack.ItemId);
+            Assert.AreEqual(1, secondStack.Amount);
+            Assert.AreEqual(1000, miningController.ResourceInventory.GetAmount(WorldResourceType.Copper));
+        }
+
+        [Test]
+        public void TryMineAtWorldPosition_FullInventoryRejectsFinalOreHitAndPreservesWall()
+        {
+            Object.DestroyImmediate(playerObject);
+            Object.DestroyImmediate(copperItem);
+            Object.DestroyImmediate(ironItem);
+            playerObject = new GameObject("Full Mining Inventory Player");
+            playerObject.SetActive(false);
+            playerObject.transform.position = new Vector3(0.5f, 0.5f, 0f);
+            CreatePlayerInventory(playerObject, 1, 1);
+            miningController = playerObject.AddComponent<PlayerMiningController>();
+            Assert.IsTrue(miningController.Initialize(grid));
+            playerObject.SetActive(true);
+            miningController.SetEquippedTool(toolData);
+
+            Assert.IsTrue(playerInventory.TryAdd(new ItemId(1001), 1));
+            Assert.IsTrue(grid.TryDamageWall(new WorldGridCoordinate(1, 0), 10, out _, out _));
+            var copperOre = new WorldOreDefinition(
+                WallType.CopperOre, WallType.Stone, WorldResourceType.Copper,
+                11, 0.1f, 0.5f, 10, 1);
+            Assert.IsTrue(grid.TryPlaceOreWall(new WorldGridCoordinate(1, 0), copperOre));
+            SetToolField("miningPower", 10);
+            miningController.SetEquippedTool(toolData);
+
+            Assert.IsFalse(miningController.TryMineAtWorldPosition(new Vector2(1.5f, 0.5f)));
+            Assert.IsTrue(grid.TryGetWall(new WorldGridCoordinate(1, 0), out WorldWallData wall));
+            Assert.AreEqual(10, wall.CurrentDurability);
+            Assert.AreEqual(1, miningController.ResourceInventory.GetAmount(WorldResourceType.Copper));
+        }
+
+        private void CreatePlayerInventory(GameObject target, int capacity, int maxStack)
+        {
+            copperItem = ScriptableObject.CreateInstance<InventoryItemData>();
+            ironItem = ScriptableObject.CreateInstance<InventoryItemData>();
+            SetItemField(copperItem, "itemId", 1001);
+            SetItemField(copperItem, "displayName", "Copper Ore");
+            SetItemField(copperItem, "maxStack", maxStack);
+            SetItemField(ironItem, "itemId", 1002);
+            SetItemField(ironItem, "displayName", "Iron Ore");
+            SetItemField(ironItem, "maxStack", 999);
+
+            playerInventory = target.AddComponent<PlayerInventory>();
+            SetInventoryField("slotCapacity", capacity);
+            SetInventoryField("itemDefinitions", new[] { copperItem, ironItem });
+            SetInventoryField("resourceBindings", new[]
+            {
+                new InventoryResourceBinding(WorldResourceType.Copper, copperItem),
+                new InventoryResourceBinding(WorldResourceType.Iron, ironItem)
+            });
+            Assert.IsTrue(playerInventory.Initialize());
+        }
+
+        private void SetInventoryField(string fieldName, object value)
+        {
+            FieldInfo field = typeof(PlayerInventory).GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"{fieldName} 필드를 찾을 수 없습니다.");
+            field.SetValue(playerInventory, value);
+        }
+
+        private static void SetItemField(InventoryItemData item, string fieldName, object value)
+        {
+            FieldInfo field = typeof(InventoryItemData).GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"{fieldName} 필드를 찾을 수 없습니다.");
+            field.SetValue(item, value);
         }
 
         private void SetToolField(string fieldName, object value)

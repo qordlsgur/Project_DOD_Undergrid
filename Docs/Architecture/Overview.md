@@ -216,5 +216,20 @@ MonoBehaviour 영역은 Unity 엔진과 게임 데이터를 연결합니다.
 - `WorldOreDefinition`은 광맥 벽 종류, 바탕 벽 종류, 자원 종류, 노이즈 채널·주파수·임계값, 내구도 및 파괴 보상 수량을 Unity 비의존 값으로 보관합니다. `WorldGridBootstrap`은 Inspector의 광물 설정 배열을 이 정의 배열로 변환해 전체 월드와 청크 생성 경로에 전달합니다.
 - `WorldTerrainGenerator`는 기존 벽 배치와 별개의 정의별 노이즈 채널을 절대 셀 좌표와 Seed로 샘플링합니다. 지정된 바탕 벽 셀에서 임계값을 만족하는 경우에만 구리 또는 철 광맥 벽을 배치하므로 생성 순서와 무관한 결과를 만듭니다. 광맥은 벽 데이터만 대체하며 바닥, 동굴 연결 및 청크 경계 알고리즘을 변경하지 않습니다.
 - `WorldWallData`는 일반 벽·광맥의 종류와 내구도 외에 파괴 보상 종류·수량을 함께 보유합니다. `WorldChunkStore`의 희소 플레이어 변경 델타도 보상 메타데이터를 포함해 저장하므로 내구도 피해는 복원되고 파괴한 광맥은 재생성 후에도 비어 있습니다. 생성 중 만들어지거나 제거된 셀은 Ready 전 변경 델타 구독 이전에 처리되어 플레이어 변경으로 기록되지 않습니다.
-- `WorldResourceInventory`는 자원별 수량을 Unity 비의존 배열로 보관하고 `PlayerMiningController`가 플레이어별 인스턴스를 소유합니다. 일반 채굴 경로가 벽 데이터와 파괴 결과를 확인한 뒤 광맥이 실제로 파괴된 경우에만 보상 수량을 더합니다. UI, 제작 및 디스크 저장은 포함하지 않습니다.
+- `WorldResourceInventory`는 슬롯 수량을 별도로 복제하지 않고 `SlotInventory`를 통해 `WorldResourceType`별 총수량을 조회합니다. 광맥의 마지막 타격은 보상 수용 공간을 먼저 예약하고, `WorldGrid`의 파괴가 확정된 뒤에만 슬롯에 보상을 반영합니다. 제작 및 디스크 저장은 포함하지 않습니다.
 - `WorldGridTilemapView`는 별도 광맥 Tile이 지정되면 해당 Tile을 원본으로 사용하고, 비어 있으면 돌벽 Tile을 복제해 Sprite와 Collider 설정을 유지하면서 구리는 `#E87532`, 철은 `#C0C0C0` 색을 적용합니다. 복제본의 색만 변경하므로 일반 돌벽 Tile 에셋은 기존 회색을 유지하며, 광맥은 기존 벽 TilemapCollider2D를 공유합니다. 광맥 전용 이미지 에셋은 추가하지 않았습니다.
+
+### 9.6 슬롯 기반 인벤토리 4-B
+
+- `SlotInventory`는 Unity 비의존 고정 배열에서 슬롯 상태를 단독 소유합니다. `ItemId`는 명시적 정수 ID이며 빈 슬롯은 ID 0과 수량 0으로 표현합니다. `InventoryItemDefinition`은 아이템별 최대 중첩 수량을 제공합니다.
+- `PlayerInventory`는 Unity 생명주기와 `InventoryItemData` ScriptableObject 에셋을 연결하고, 에셋 정의로 DOD 슬롯 데이터를 한 번 초기화합니다. 현재 Main 씬은 40칸이며 구리 1001, 철 1002, 최대 중첩 999 설정을 참조합니다. 아이콘은 콘텐츠 데이터에 포함되며, 화면 표시 UI는 9.7절을 참조합니다.
+- `WorldResourceInventory`는 `PlayerInventory`와 같은 `SlotInventory`를 참조하는 자원 조회 호환 계층입니다. 기존 `GetAmount(WorldResourceType)` API는 해당 자원에 연결된 ItemId의 슬롯 수량 합계로 동작합니다.
+- 광물 보상 예약 중에는 슬롯 추가·제거를 잠시 거부해 월드 파괴 이벤트 처리 중 다른 변경이 예약 공간을 차지하지 못하게 합니다. 월드 피해가 실패하거나 벽이 파괴되지 않으면 예약을 취소하고, 파괴가 확정된 경우 예약 보상을 슬롯에 반영합니다.
+
+### 9.7 인벤토리 표시 UI
+
+- `PlayerInputHandler`는 Tab 입력을 `InventoryToggleRequested` 이벤트로 전달합니다. `PlayerInventoryUI`는 이 이벤트를 구독해 창을 열고 닫으며, 입력 감지와 표시 책임을 분리합니다.
+- Main 씬 Player의 `PlayerInventoryUI`는 uGUI `Canvas`, `CanvasScaler`, 슬롯 Grid 및 40개 슬롯 표시 요소를 실행 시 생성합니다. Canvas는 Screen Space Overlay이며 화면 해상도에 맞춰 크기를 조정합니다.
+- 슬롯 표시는 `PlayerInventory`의 `SlotInventory` 값을 직접 조회합니다. `SlotChanged` 이벤트를 받은 경우 열린 창의 변경 슬롯만 다시 그리고, 가리킨 슬롯의 Tooltip도 최신 이름·수량으로 갱신합니다. UI는 별도의 아이템 수량 상태를 보유하지 않습니다.
+- 슬롯 내부에는 아이템 아이콘과 오른쪽 아래 수량만 표시합니다. 이름과 수량은 슬롯 위에 커서를 올렸을 때 `이름 (수량)` 형식 Tooltip으로 표시하며, 커서를 따라 이동하고 슬롯 이탈·창 닫기 시 숨깁니다.
+- 구리와 철은 `TemporaryWorldTileSprite.png`를 공통 아이콘으로 참조하고, 월드 광물 타일과 같은 구리 `#E87532`·철 `#C0C0C0` 색조를 적용합니다. 아이콘이 지정되지 않은 다른 아이템은 Tooltip으로 종류와 수량을 표시합니다. 현재 프로젝트 manifest에서 TextMeshPro 의존성을 확인하지 못해 기본 uGUI `Text`를 사용하며, 버튼 입력·드래그·정렬은 포함하지 않습니다.

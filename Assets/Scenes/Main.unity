@@ -135,6 +135,8 @@ GameObject:
   - component: {fileID: 403221930}
   - component: {fileID: 403221933}
   - component: {fileID: 403221934}
+  - component: {fileID: 403221935}
+  - component: {fileID: 403221936}
   - component: {fileID: 1200000001}
   - component: {fileID: 1200000002}
   - component: {fileID: 1200000003}
@@ -354,6 +356,40 @@ MonoBehaviour:
   worldGridBootstrap: {fileID: 1900000003}
   equippedTool: {fileID: 11400000, guid: 9e61c948bfcb47cf9c01b2d6cb90e3c0, type: 2}
   miningCamera: {fileID: 519420031}
+  playerInventory: {fileID: 403221935}
+--- !u!114 &403221935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 403221925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0080000000000000000000000000008, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Prohect_DOD_Undergird.World::Prohect_DOD_Undergird.World.PlayerInventory
+  slotCapacity: 40
+  itemDefinitions:
+  - {fileID: 11400000, guid: b0010000000000000000000000000001, type: 2}
+  - {fileID: 11400000, guid: b0020000000000000000000000000002, type: 2}
+  resourceBindings:
+  - resourceType: 1
+    itemData: {fileID: 11400000, guid: b0010000000000000000000000000001, type: 2}
+  - resourceType: 2
+    itemData: {fileID: 11400000, guid: b0020000000000000000000000000002, type: 2}
+--- !u!114 &403221936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 403221925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0090000000000000000000000000009, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Prohect_DOD_Undergird.Player.PlayerInventoryUI
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
