@@ -21,6 +21,7 @@ namespace Prohect_DOD_Undergird.World.Tests
         private Sprite tileSprite;
         private Tile groundTile;
         private Tile wallTile;
+        private Tilemap floorTilemap;
         private Tilemap wallTilemap;
         private WorldGrid gridData;
         private float previousTimeScale;
@@ -98,6 +99,93 @@ namespace Prohect_DOD_Undergird.World.Tests
             Assert.Greater(body.position.x, 1.2f, "벽 제거 후 Player가 이전 벽 위치를 통과해야 합니다.");
         }
 
+        [UnityTest]
+        public IEnumerator GeneratedWall_IsRenderedAndItsColliderIsRemovedAfterMiningDataChange()
+        {
+            CaptureAndSetPhysicsSettings();
+            CreateWorldTilemaps();
+            gridData = new WorldGrid(64, 64, 1f, 1f);
+            for (int y = 0; y < gridData.Height; y++)
+            {
+                for (int x = 0; x < gridData.Width; x++)
+                {
+                    Assert.IsTrue(gridData.TryPlaceFloor(new WorldGridCoordinate(x, y), FloorType.Ground));
+                }
+            }
+
+            int generatedCount = GenerateChunkedTerrain(gridData);
+            Assert.Greater(generatedCount, 0);
+            Assert.IsTrue(gridObject.GetComponent<WorldGridTilemapView>().Initialize(gridData));
+
+            WorldGridCoordinate target = default;
+            WorldWallData targetWall = default;
+            bool foundTarget = false;
+            for (int y = 0; y < gridData.Height && !foundTarget; y++)
+            {
+                for (int x = 0; x < gridData.Width; x++)
+                {
+                    var coordinate = new WorldGridCoordinate(x, y);
+                    if (gridData.TryGetWall(coordinate, out targetWall))
+                    {
+                        target = coordinate;
+                        foundTarget = true;
+                        break;
+                    }
+                }
+            }
+
+            Assert.IsTrue(foundTarget);
+            Vector3Int tileCoordinate = new Vector3Int(target.X, target.Y, 0);
+            TilemapCollider2D wallCollider = wallTilemap.GetComponent<TilemapCollider2D>();
+            Assert.IsNotNull(wallCollider, "Wall Tilemap에는 Collider 컴포넌트가 있어야 합니다.");
+            Assert.AreSame(wallTile, wallTilemap.GetTile(tileCoordinate));
+            Physics2D.SyncTransforms();
+            yield return new WaitForFixedUpdate();
+
+            Vector2 formerWallCenter = new Vector2(target.X + 0.5f, target.Y + 0.5f);
+            Assert.IsTrue(
+                wallCollider.OverlapPoint(formerWallCenter),
+                "생성된 벽 타일에는 Wall Tilemap Collider가 있어야 합니다.");
+
+            int wallChangeCount = 0;
+            WorldGridChange observedChange = default;
+            gridData.CellChanged += change =>
+            {
+                if (change.Layer == WorldGridLayer.Wall)
+                {
+                    wallChangeCount++;
+                    observedChange = change;
+                }
+            };
+
+            Assert.IsTrue(gridData.TryDamageWall(
+                target,
+                targetWall.CurrentDurability,
+                out _,
+                out bool wasDestroyed));
+            Assert.IsTrue(wasDestroyed);
+            Assert.AreEqual(1, wallChangeCount, "벽 파괴 시 CellChanged 이벤트가 한 번 발생해야 합니다.");
+            Assert.AreEqual(target, observedChange.Coordinate);
+            Assert.AreEqual(WorldGridLayer.Wall, observedChange.Layer);
+            Assert.AreEqual(WorldGridChangeKind.Removed, observedChange.Kind);
+            Assert.IsNull(wallTilemap.GetTile(tileCoordinate));
+            Assert.AreSame(groundTile, floorTilemap.GetTile(tileCoordinate));
+
+            // TilemapCollider2D는 변경을 LateUpdate에서 묶어 처리하므로 물리 쿼리 전에 보류된 형상을 반영합니다.
+            if (wallCollider.hasTilemapChanges)
+            {
+                wallCollider.ProcessTilemapChanges();
+            }
+
+            Physics2D.SyncTransforms();
+            yield return new WaitForFixedUpdate();
+
+            Assert.IsFalse(
+                wallCollider.OverlapPoint(formerWallCenter),
+                "TilemapCollider2D 컴포넌트는 유지되지만 파괴된 벽 셀의 충돌 형상은 제거되어야 합니다.");
+            Assert.IsTrue(gridData.IsWalkable(target));
+        }
+
         [UnityTearDown]
         public IEnumerator TearDown()
         {
@@ -159,7 +247,7 @@ namespace Prohect_DOD_Undergird.World.Tests
             Grid unityGrid = gridObject.GetComponent<Grid>();
             unityGrid.cellSize = Vector3.one;
 
-            Tilemap floorTilemap = CreateTilemap("Floor", gridObject.transform, false);
+            floorTilemap = CreateTilemap("Floor", gridObject.transform, false);
             wallTilemap = CreateTilemap("Wall", gridObject.transform, true);
             WorldGridTilemapView view = gridObject.AddComponent<WorldGridTilemapView>();
             CreateTiles();
@@ -179,6 +267,63 @@ namespace Prohect_DOD_Undergird.World.Tests
             Assert.IsTrue(gridData.TryPlaceFloor(new WorldGridCoordinate(2, 0), FloorType.Ground));
             Assert.IsTrue(gridData.TryPlaceWall(new WorldGridCoordinate(1, 0), WallType.Stone, 10));
             Assert.IsTrue(view.Initialize(gridData));
+        }
+
+        private static int GenerateChunkedTerrain(WorldGrid grid)
+        {
+            var gridWorldOrigin = new WorldCellCoordinate(0, 0);
+            var worldBounds = new WorldCellBounds(0, 0, 64, 64);
+            var playerStartWorldCell = new WorldCellCoordinate(32, 32);
+            var playerStartGridCell = new WorldGridCoordinate(32, 32);
+            WorldChunkCoordinate[] chunks =
+            {
+                new WorldChunkCoordinate(0, 0),
+                new WorldChunkCoordinate(1, 0),
+                new WorldChunkCoordinate(0, 1),
+                new WorldChunkCoordinate(1, 1)
+            };
+            int generatedCount = 0;
+
+            for (int i = 0; i < chunks.Length; i++)
+            {
+                generatedCount += WorldTerrainGenerator.GenerateChunkWalls(
+                    grid,
+                    gridWorldOrigin,
+                    chunks[i],
+                    32,
+                    1847,
+                    0.12f,
+                    0.66f,
+                    0.35f,
+                    10,
+                    playerStartWorldCell,
+                    5f);
+            }
+
+            for (int i = 0; i < chunks.Length; i++)
+            {
+                WorldTerrainGenerator.CarveChunkCaves(
+                    grid,
+                    gridWorldOrigin,
+                    chunks[i],
+                    32,
+                    1847,
+                    0.1f,
+                    0.58f);
+                Assert.IsTrue(WorldTerrainGenerator.ConnectChunkEntrances(
+                    grid,
+                    gridWorldOrigin,
+                    worldBounds,
+                    chunks[i],
+                    32,
+                    1847,
+                    16,
+                    2,
+                    out _));
+            }
+
+            Assert.IsTrue(grid.IsWalkable(playerStartGridCell));
+            return generatedCount;
         }
 
         private void CreatePlayer()

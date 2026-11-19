@@ -86,6 +86,65 @@ namespace Prohect_DOD_Undergird.World.Tests
 
         }
 
+        [Test]
+        public void TryMineAtWorldPosition_AwardsOreOnlyOnceWhenTheWallIsDestroyed()
+        {
+            Assert.IsTrue(grid.TryDamageWall(new WorldGridCoordinate(1, 0), 10, out _, out bool copperRemoved));
+            Assert.IsTrue(copperRemoved);
+            Assert.IsTrue(grid.TryDamageWall(new WorldGridCoordinate(2, 0), 10, out _, out bool ironRemoved));
+            Assert.IsTrue(ironRemoved);
+
+            var copperOre = new WorldOreDefinition(
+                WallType.CopperOre, WallType.Stone, WorldResourceType.Copper,
+                11, 0.1f, 0.5f, 2, 3);
+            var ironOre = new WorldOreDefinition(
+                WallType.IronOre, WallType.Stone, WorldResourceType.Iron,
+                12, 0.1f, 0.5f, 1, 2);
+            Assert.IsTrue(grid.TryPlaceOreWall(new WorldGridCoordinate(1, 0), copperOre));
+            Assert.IsTrue(grid.TryPlaceOreWall(new WorldGridCoordinate(2, 0), ironOre));
+            SetToolField("miningPower", 1);
+            SetToolField("miningRange", 3f);
+            miningController.SetEquippedTool(toolData);
+
+            Assert.IsTrue(miningController.TryMineAtWorldPosition(new Vector2(1.5f, 0.5f)));
+            Assert.AreEqual(0, miningController.ResourceInventory.GetAmount(WorldResourceType.Copper));
+            Assert.IsTrue(miningController.TryMineAtWorldPosition(new Vector2(1.5f, 0.5f)));
+            Assert.AreEqual(3, miningController.ResourceInventory.GetAmount(WorldResourceType.Copper));
+            Assert.IsFalse(miningController.TryMineAtWorldPosition(new Vector2(1.5f, 0.5f)));
+            Assert.AreEqual(3, miningController.ResourceInventory.GetAmount(WorldResourceType.Copper));
+
+            Assert.IsTrue(miningController.TryMineAtWorldPosition(new Vector2(2.5f, 0.5f)));
+            Assert.AreEqual(2, miningController.ResourceInventory.GetAmount(WorldResourceType.Iron));
+            Assert.IsFalse(miningController.TryMineAtWorldPosition(new Vector2(2.5f, 0.5f)));
+            Assert.AreEqual(2, miningController.ResourceInventory.GetAmount(WorldResourceType.Iron));
+        }
+
+        [Test]
+        public void WorldResourceInventory_RejectsInvalidAmountsAndKeepsResourceCountsIndependent()
+        {
+            var inventory = new WorldResourceInventory();
+
+            Assert.IsFalse(inventory.TryAdd(WorldResourceType.Copper, 0));
+            Assert.IsFalse(inventory.TryAdd(WorldResourceType.Iron, -1));
+            Assert.IsFalse(inventory.TryAdd(WorldResourceType.None, 5));
+            Assert.IsTrue(inventory.TryAdd(WorldResourceType.Copper, 4));
+            Assert.IsTrue(inventory.TryAdd(WorldResourceType.Iron, 2));
+
+            Assert.AreEqual(4, inventory.GetAmount(WorldResourceType.Copper));
+            Assert.AreEqual(2, inventory.GetAmount(WorldResourceType.Iron));
+        }
+
+        [Test]
+        public void TryMineAtWorldPosition_DestroyingNormalWallDoesNotAwardOre()
+        {
+            SetToolField("miningPower", 10);
+            miningController.SetEquippedTool(toolData);
+
+            Assert.IsTrue(miningController.TryMineAtWorldPosition(new Vector2(1.5f, 0.5f)));
+            Assert.AreEqual(0, miningController.ResourceInventory.GetAmount(WorldResourceType.Copper));
+            Assert.AreEqual(0, miningController.ResourceInventory.GetAmount(WorldResourceType.Iron));
+        }
+
         private void SetToolField(string fieldName, object value)
         {
             SetToolField(toolData, fieldName, value);

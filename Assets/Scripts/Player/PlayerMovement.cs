@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using Prohect_DOD_Undergird.World;
 
 namespace Prohect_DOD_Undergird.Player
 {
@@ -19,11 +20,17 @@ namespace Prohect_DOD_Undergird.Player
         [SerializeField] private float dashDuration = 0.2f;
         [SerializeField] private float dashCooldown = 1.0f;
 
+        [Header("청크 준비 확인")]
+        [SerializeField] private WorldChunkStreamer chunkStreamer;
+
         private Rigidbody2D rb;
         private PlayerInputHandler inputHandler;
+        private Collider2D playerCollider;
 
         private bool canDash = true;
         private bool isDashing;
+        private bool isDashPending;
+        private Vector2 pendingDashDirection;
 
         private Vector2 lastMoveDirection = Vector2.zero;
 
@@ -31,12 +38,24 @@ namespace Prohect_DOD_Undergird.Player
         {
             rb = GetComponent<Rigidbody2D>();
             inputHandler = GetComponent<PlayerInputHandler>();
+            playerCollider = GetComponent<Collider2D>();
         }
 
         private void FixedUpdate()
         {
-            if (rb == null || inputHandler == null || isDashing)
+            if (rb == null || inputHandler == null)
             {
+                return;
+            }
+
+            if (isDashPending && !isDashing && canDash && TryStartPendingDash())
+            {
+                return;
+            }
+
+            if (isDashing)
+            {
+                StopAtUnreadyChunkBoundary();
                 return;
             }
 
@@ -54,6 +73,7 @@ namespace Prohect_DOD_Undergird.Player
 
             // 대각선 이동 시에도 일정한 속도를 유지합니다.
             rb.linearVelocity = inputDirection.normalized * effectiveSpeed;
+            StopAtUnreadyChunkBoundary();
         }
 
         /// <summary>
@@ -76,7 +96,51 @@ namespace Prohect_DOD_Undergird.Player
                 return;
             }
 
+            if (chunkStreamer != null)
+            {
+                pendingDashDirection = dashDirection;
+                isDashPending = true;
+                TryStartPendingDash();
+                return;
+            }
+
             StartCoroutine(Dash(dashDirection));
+        }
+
+        private bool TryStartPendingDash()
+        {
+            if (chunkStreamer == null)
+            {
+                return false;
+            }
+
+            if (!chunkStreamer.TryPrepareDashPath(
+                    rb.position,
+                    pendingDashDirection,
+                    dashSpeed,
+                    dashDuration,
+                    out bool pathInsideWorld))
+            {
+                if (!pathInsideWorld)
+                {
+                    isDashPending = false;
+                }
+
+                return false;
+            }
+
+            isDashPending = false;
+            StartCoroutine(Dash(pendingDashDirection));
+            return true;
+        }
+
+        private void StopAtUnreadyChunkBoundary()
+        {
+            if (chunkStreamer != null && playerCollider != null &&
+                !chunkStreamer.CanMovePlayer(rb.position, rb.linearVelocity, Time.fixedDeltaTime))
+            {
+                rb.linearVelocity = Vector2.zero;
+            }
         }
 
         private void OnDisable()
@@ -84,6 +148,8 @@ namespace Prohect_DOD_Undergird.Player
             // 오브젝트가 비활성화되면 실행 중이던 코루틴이 중단되므로 상태 잠김을 방지하기 위해 초기화합니다.
             isDashing = false;
             canDash = true;
+            isDashPending = false;
+            chunkStreamer?.ReleaseDashPath();
 
             if (rb != null)
             {
@@ -106,6 +172,7 @@ namespace Prohect_DOD_Undergird.Player
             yield return new WaitForSeconds(dashDuration);
 
             isDashing = false;
+            chunkStreamer?.ReleaseDashPath();
 
             // 대시 종료 시 이동 입력이 유지되고 있다면 속도를 해당 이동/스프린트 속도로 복귀하고, 입력이 없으면 정지합니다.
             if (rb != null)

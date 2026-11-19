@@ -156,6 +156,115 @@ namespace Prohect_DOD_Undergird.World.Tests
             Assert.AreSame(stoneWallTile, wallTilemap.GetTile(new Vector3Int(1, 1, 0)));
         }
 
+        [Test]
+        public void InitializeChunks_RendersNegativeAndPartialChunksAtGridWorldPositions()
+        {
+            var bounds = new WorldCellBounds(-3, -3, 2, 2);
+            var store = new WorldChunkStore(bounds, 4, 1f, 1f);
+            WorldChunkCoordinate negativeChunk = new WorldChunkCoordinate(-1, -1);
+            WorldChunkCoordinate positiveChunk = new WorldChunkCoordinate(0, 0);
+            CreateReadyChunk(store, negativeChunk, new WorldGridCoordinate(1, 1));
+            CreateReadyChunk(store, positiveChunk, new WorldGridCoordinate(1, 1));
+
+            Assert.IsTrue(view.InitializeChunks(store));
+            Assert.IsTrue(view.TryDisplayChunk(negativeChunk));
+            Assert.IsTrue(view.TryDisplayChunk(positiveChunk));
+
+            Assert.AreSame(groundTile, floorTilemap.GetTile(new Vector3Int(-1, -1, 0)));
+            Assert.AreSame(stoneWallTile, wallTilemap.GetTile(new Vector3Int(0, 0, 0)));
+            Assert.AreSame(groundTile, floorTilemap.GetTile(new Vector3Int(2, 2, 0)));
+            Assert.AreSame(stoneWallTile, wallTilemap.GetTile(new Vector3Int(3, 3, 0)));
+        }
+
+        [Test]
+        public void RemovingChunkDisplay_PreservesNeighborAndAllowsRedisplayBeforeUnload()
+        {
+            var store = new WorldChunkStore(new WorldCellBounds(-2, -2, 2, 2), 2, 1f, 1f);
+            WorldChunkCoordinate leftChunk = new WorldChunkCoordinate(-1, -1);
+            WorldChunkCoordinate rightChunk = new WorldChunkCoordinate(0, -1);
+            CreateReadyChunk(store, leftChunk, new WorldGridCoordinate(0, 0));
+            CreateReadyChunk(store, rightChunk, new WorldGridCoordinate(0, 0));
+            Assert.IsTrue(view.InitializeChunks(store));
+
+            Assert.IsTrue(view.TryDisplayChunk(leftChunk));
+            Assert.IsTrue(view.TryDisplayChunk(rightChunk));
+            Assert.IsFalse(store.TryUnloadChunk(leftChunk));
+            Assert.IsTrue(view.TryRemoveChunkDisplay(leftChunk));
+
+            Assert.IsNull(floorTilemap.GetTile(new Vector3Int(0, 0, 0)));
+            Assert.IsNull(wallTilemap.GetTile(new Vector3Int(0, 0, 0)));
+            Assert.AreSame(groundTile, floorTilemap.GetTile(new Vector3Int(2, 0, 0)));
+            Assert.AreSame(stoneWallTile, wallTilemap.GetTile(new Vector3Int(2, 0, 0)));
+            Assert.IsTrue(view.TryDisplayChunk(leftChunk));
+            Assert.AreSame(stoneWallTile, wallTilemap.GetTile(new Vector3Int(0, 0, 0)));
+            Assert.IsTrue(view.TryRemoveChunkDisplay(leftChunk));
+            Assert.IsTrue(store.TryUnloadChunk(leftChunk));
+        }
+
+        [Test]
+        public void ChunkChanges_UpdateDisplayedOnlyAndHiddenChunkUsesLatestDataOnDisplay()
+        {
+            var store = new WorldChunkStore(new WorldCellBounds(-2, -2, 2, 2), 2, 1f, 1f);
+            WorldChunkCoordinate displayedChunk = new WorldChunkCoordinate(-1, -1);
+            WorldChunkCoordinate hiddenChunk = new WorldChunkCoordinate(0, -1);
+            CreateReadyChunk(store, displayedChunk, new WorldGridCoordinate(0, 0));
+            CreateReadyChunk(store, hiddenChunk, null);
+            Assert.IsTrue(view.InitializeChunks(store));
+            Assert.IsTrue(view.TryDisplayChunk(displayedChunk));
+            var world = new WorldGridWorld(store);
+
+            Assert.IsTrue(world.TryDamageWall(
+                new WorldCellCoordinate(-2, -2),
+                10,
+                out _,
+                out bool wasDestroyed,
+                out _));
+            Assert.IsTrue(wasDestroyed);
+            Assert.IsNull(wallTilemap.GetTile(new Vector3Int(0, 0, 0)));
+            Assert.AreSame(groundTile, floorTilemap.GetTile(new Vector3Int(0, 0, 0)));
+
+            Assert.IsTrue(world.TryPlaceWall(new WorldCellCoordinate(0, -2), WallType.Soil, 6, out _));
+            Assert.IsNull(wallTilemap.GetTile(new Vector3Int(2, 0, 0)));
+            Assert.IsTrue(view.TryDisplayChunk(hiddenChunk));
+            Assert.AreSame(soilWallTile, wallTilemap.GetTile(new Vector3Int(2, 0, 0)));
+        }
+
+        [Test]
+        public void TryDisplayChunk_RejectsQueuedDataAndIsIdempotentWhenReady()
+        {
+            var store = new WorldChunkStore(new WorldCellBounds(-2, -2, 2, 2), 2, 1f, 1f);
+            WorldChunkCoordinate chunk = new WorldChunkCoordinate(-1, -1);
+            Assert.IsTrue(store.TryQueueChunk(chunk));
+            Assert.IsTrue(view.InitializeChunks(store));
+            Assert.IsFalse(view.TryDisplayChunk(chunk));
+
+            CreateReadyChunk(store, chunk, new WorldGridCoordinate(0, 0));
+            Assert.IsTrue(view.TryDisplayChunk(chunk));
+            Assert.IsTrue(view.TryDisplayChunk(chunk));
+            Assert.AreEqual(WorldChunkPresentationState.Displayed, GetPresentationState(store, chunk));
+            Assert.IsTrue(view.TryRemoveChunkDisplay(chunk));
+            Assert.IsTrue(view.TryRemoveChunkDisplay(chunk));
+            Assert.AreEqual(WorldChunkPresentationState.NotDisplayed, GetPresentationState(store, chunk));
+        }
+
+        [Test]
+        public void InitializeChunks_WhenDisabled_DefersSynchronizationUntilEnabled()
+        {
+            var store = new WorldChunkStore(new WorldCellBounds(-2, -2, 2, 2), 2, 1f, 1f);
+            WorldChunkCoordinate chunk = new WorldChunkCoordinate(-1, -1);
+            CreateReadyChunk(store, chunk, new WorldGridCoordinate(0, 0));
+            Assert.IsTrue(store.TrySetDisplayed(chunk, true));
+
+            view.enabled = false;
+            Assert.IsTrue(view.InitializeChunks(store));
+            Assert.IsNull(floorTilemap.GetTile(new Vector3Int(0, 0, 0)));
+
+            view.enabled = true;
+
+            Assert.AreSame(groundTile, floorTilemap.GetTile(new Vector3Int(0, 0, 0)));
+            Assert.AreSame(stoneWallTile, wallTilemap.GetTile(new Vector3Int(0, 0, 0)));
+        }
+
         private static WorldGrid CreateGroundGrid(int width, int height)
         {
             var grid = new WorldGrid(width, height, 1f, 1f, -2f, -2f);
@@ -168,6 +277,47 @@ namespace Prohect_DOD_Undergird.World.Tests
             }
 
             return grid;
+        }
+
+        private WorldGrid CreateReadyChunk(
+            WorldChunkStore store,
+            WorldChunkCoordinate chunk,
+            WorldGridCoordinate? wallCoordinate)
+        {
+            WorldChunkDataState dataState = store.GetDataState(chunk);
+            if (dataState == WorldChunkDataState.Unloaded || dataState == WorldChunkDataState.Failed)
+            {
+                Assert.IsTrue(store.TryQueueChunk(chunk));
+            }
+            else
+            {
+                Assert.AreEqual(WorldChunkDataState.Queued, dataState);
+            }
+
+            Assert.IsTrue(store.TryBeginGeneration(chunk, out WorldGrid chunkGrid));
+            for (int y = 0; y < chunkGrid.Height; y++)
+            {
+                for (int x = 0; x < chunkGrid.Width; x++)
+                {
+                    Assert.IsTrue(chunkGrid.TryPlaceFloor(new WorldGridCoordinate(x, y), FloorType.Ground));
+                }
+            }
+
+            if (wallCoordinate.HasValue)
+            {
+                Assert.IsTrue(chunkGrid.TryPlaceWall(wallCoordinate.Value, WallType.Stone, 10));
+            }
+
+            Assert.IsTrue(store.TryMarkReady(chunk));
+            return chunkGrid;
+        }
+
+        private static WorldChunkPresentationState GetPresentationState(
+            WorldChunkStore store,
+            WorldChunkCoordinate chunk)
+        {
+            Assert.IsTrue(store.TryGetPresentationState(chunk, out WorldChunkPresentationState state));
+            return state;
         }
 
         private static Tilemap CreateTilemap(string objectName, Transform parent, bool addCollider)

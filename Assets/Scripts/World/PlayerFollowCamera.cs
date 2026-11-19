@@ -1,4 +1,3 @@
-using Prohect_DOD_Undergird.DOD.World;
 using UnityEngine;
 
 namespace Prohect_DOD_Undergird.World
@@ -68,16 +67,15 @@ namespace Prohect_DOD_Undergird.World
 
         private Vector3 ClampToWorld(Vector3 cameraPosition)
         {
-            WorldGrid gridData = worldGridBootstrap != null ? worldGridBootstrap.GridData : null;
-            if (gridData == null || targetCamera == null || targetCamera.aspect <= 0f)
+            if (worldGridBootstrap == null || targetCamera == null || targetCamera.aspect <= 0f)
             {
                 return cameraPosition;
             }
 
-            float worldMinX = gridData.OriginX;
-            float worldMinY = gridData.OriginY;
-            float worldMaxX = worldMinX + gridData.Width * gridData.CellWidth;
-            float worldMaxY = worldMinY + gridData.Height * gridData.CellHeight;
+            float worldMinX = worldGridBootstrap.WorldMinimumX;
+            float worldMinY = worldGridBootstrap.WorldMinimumY;
+            float worldMaxX = worldGridBootstrap.WorldMaximumX;
+            float worldMaxY = worldGridBootstrap.WorldMaximumY;
             float halfViewHeight = Mathf.Max(0f, targetCamera.orthographicSize);
             float halfViewWidth = halfViewHeight * targetCamera.aspect;
 

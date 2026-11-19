@@ -9,16 +9,22 @@ namespace Prohect_DOD_Undergird.World
     [DisallowMultipleComponent]
     public sealed class PlayerMiningController : MonoBehaviour
     {
+        private const bool EnableMiningRewardLogs = true;
+
         [Header("월드 및 장비")]
         [SerializeField] private WorldGridBootstrap worldGridBootstrap;
         [SerializeField] private WorldMiningToolData equippedTool;
         [SerializeField] private Camera miningCamera;
 
         private WorldGrid gridData;
+        private WorldGridWorld chunkWorld;
+        private readonly WorldResourceInventory resourceInventory = new WorldResourceInventory();
         private float nextMiningTime;
         private bool miningActionClaimed;
 
         public WorldMiningToolData EquippedTool => equippedTool;
+        /// <summary>채굴로 획득한 자원의 현재 수량을 제공하는 DOD 데이터입니다.</summary>
+        public WorldResourceInventory ResourceInventory => resourceInventory;
 
         private void Awake()
         {
@@ -32,7 +38,14 @@ namespace Prohect_DOD_Undergird.World
         {
             if (worldGridBootstrap != null)
             {
-                Initialize(worldGridBootstrap.GridData);
+                if (worldGridBootstrap.IsChunkStreamingEnabled)
+                {
+                    Initialize(worldGridBootstrap.ChunkWorld);
+                }
+                else
+                {
+                    Initialize(worldGridBootstrap.GridData);
+                }
             }
         }
 
@@ -52,6 +65,20 @@ namespace Prohect_DOD_Undergird.World
             }
 
             gridData = source;
+            chunkWorld = null;
+            return true;
+        }
+
+        /// <summary>스트리밍 월드의 절대 좌표 API를 채굴 처리에 연결합니다.</summary>
+        public bool Initialize(WorldGridWorld source)
+        {
+            if (source == null)
+            {
+                return false;
+            }
+
+            chunkWorld = source;
+            gridData = null;
             return true;
         }
 
@@ -76,7 +103,10 @@ namespace Prohect_DOD_Undergird.World
             }
 
             if (!TryGetMouseWorldPosition(mouseScreenPosition, out Vector2 mouseWorldPosition) ||
-                !TryGetMiningTarget(mouseWorldPosition, out WorldGridCoordinate coordinate))
+                !TryGetMiningTarget(
+                    mouseWorldPosition,
+                    out WorldGridCoordinate localCoordinate,
+                    out WorldCellCoordinate worldCoordinate))
             {
                 return miningActionClaimed;
             }
@@ -88,7 +118,7 @@ namespace Prohect_DOD_Undergird.World
             }
 
             nextMiningTime = Time.time + Mathf.Max(0.01f, equippedTool.MiningInterval);
-            gridData.TryDamageWall(coordinate, equippedTool.MiningPower, out _, out _);
+            ApplyMiningDamage(localCoordinate, worldCoordinate);
             return true;
         }
 
@@ -98,12 +128,15 @@ namespace Prohect_DOD_Undergird.World
         /// </summary>
         public bool TryMineAtWorldPosition(Vector2 targetWorldPosition)
         {
-            if (!TryGetMiningTarget(targetWorldPosition, out WorldGridCoordinate coordinate))
+            if (!TryGetMiningTarget(
+                    targetWorldPosition,
+                    out WorldGridCoordinate localCoordinate,
+                    out WorldCellCoordinate worldCoordinate))
             {
                 return false;
             }
 
-            return gridData.TryDamageWall(coordinate, equippedTool.MiningPower, out _, out _);
+            return ApplyMiningDamage(localCoordinate, worldCoordinate);
         }
 
         private bool TryGetMouseWorldPosition(Vector3 mouseScreenPosition, out Vector2 mouseWorldPosition)
@@ -126,18 +159,15 @@ namespace Prohect_DOD_Undergird.World
 
         private bool TryGetMiningTarget(
             Vector2 targetWorldPosition,
-            out WorldGridCoordinate coordinate)
+            out WorldGridCoordinate localCoordinate,
+            out WorldCellCoordinate worldCoordinate)
         {
-            coordinate = default;
-            if (gridData == null || equippedTool == null || equippedTool.MiningPower <= 0 ||
+            localCoordinate = default;
+            worldCoordinate = default;
+            if ((gridData == null && chunkWorld == null) || equippedTool == null || equippedTool.MiningPower <= 0 ||
                 equippedTool.MiningInterval <= 0f || equippedTool.MiningRange < 0f ||
-                !gridData.TryWorldToCell(targetWorldPosition.x, targetWorldPosition.y, out coordinate) ||
-                !gridData.TryGetWall(coordinate, out _))
-            {
-                return false;
-            }
-
-            if (!gridData.TryGetCellCenterWorldPosition(coordinate, out float cellX, out float cellY))
+                !TryResolveMiningCell(targetWorldPosition, out localCoordinate, out worldCoordinate,
+                    out float cellX, out float cellY))
             {
                 return false;
             }
@@ -145,6 +175,85 @@ namespace Prohect_DOD_Undergird.World
             Vector2 playerPosition = transform.position;
             Vector2 offset = new Vector2(cellX - playerPosition.x, cellY - playerPosition.y);
             return offset.sqrMagnitude <= equippedTool.MiningRange * equippedTool.MiningRange;
+        }
+
+        private bool TryResolveMiningCell(
+            Vector2 targetWorldPosition,
+            out WorldGridCoordinate localCoordinate,
+            out WorldCellCoordinate worldCoordinate,
+            out float centerX,
+            out float centerY)
+        {
+            localCoordinate = default;
+            worldCoordinate = default;
+            centerX = 0f;
+            centerY = 0f;
+
+            if (chunkWorld != null)
+            {
+                return chunkWorld.TryWorldPositionToCell(
+                           targetWorldPosition.x,
+                           targetWorldPosition.y,
+                           out worldCoordinate) &&
+                       chunkWorld.GetAccessStatus(worldCoordinate) == WorldCellAccessStatus.Ready &&
+                       chunkWorld.TryGetWall(worldCoordinate, out _, out _) &&
+                       chunkWorld.TryGetCellCenterWorldPosition(worldCoordinate, out centerX, out centerY);
+            }
+
+            if (gridData == null ||
+                !gridData.TryWorldToCell(targetWorldPosition.x, targetWorldPosition.y, out localCoordinate) ||
+                !gridData.TryGetWall(localCoordinate, out _))
+            {
+                return false;
+            }
+
+            return gridData.TryGetCellCenterWorldPosition(localCoordinate, out centerX, out centerY);
+        }
+
+        private bool ApplyMiningDamage(
+            WorldGridCoordinate localCoordinate,
+            WorldCellCoordinate worldCoordinate)
+        {
+            WorldWallData wallBefore;
+            bool wasDestroyed;
+            if (chunkWorld != null)
+            {
+                if (!chunkWorld.TryGetWall(worldCoordinate, out wallBefore, out _) ||
+                    !chunkWorld.TryDamageWall(
+                        worldCoordinate,
+                        equippedTool.MiningPower,
+                        out _,
+                        out wasDestroyed,
+                        out _))
+                {
+                    return false;
+                }
+            }
+            else if (!gridData.TryGetWall(localCoordinate, out wallBefore) ||
+                     !gridData.TryDamageWall(
+                         localCoordinate,
+                         equippedTool.MiningPower,
+                         out _,
+                         out wasDestroyed))
+            {
+                return false;
+            }
+
+            if (wasDestroyed && wallBefore.ResourceType != WorldResourceType.None)
+            {
+                // 보상은 실제로 벽을 파괴한 입력에서만 한 번 지급합니다.
+                // 청크 재생성은 변경 데이터만 복원하므로 생성 과정에서 보상이 다시 지급되지 않습니다.
+                if (resourceInventory.TryAdd(wallBefore.ResourceType, wallBefore.ResourceAmount) &&
+                    EnableMiningRewardLogs)
+                {
+                    int totalAmount = resourceInventory.GetAmount(wallBefore.ResourceType);
+                    Debug.Log(
+                        $"[MiningReward] 자원: {wallBefore.ResourceType}, 획득 수량: {wallBefore.ResourceAmount}, 현재 보유량: {totalAmount}",
+                        this);
+                }
+            }
+
+            return true;
         }
     }
 }

@@ -212,7 +212,47 @@ namespace Prohect_DOD_Undergird.DOD.World
             WallType type,
             int maxDurability)
         {
-            if (!IsInBounds(coordinate) || !IsSupportedWallType(type) || maxDurability <= 0)
+            if (!WorldOreDefinition.IsBaseWallType(type))
+            {
+                return false;
+            }
+
+            return TryPlaceWallState(
+                coordinate,
+                type,
+                maxDurability,
+                WorldResourceType.None,
+                0);
+        }
+
+        /// <summary>광물 정의의 벽 종류, 내구도, 채굴 보상을 한 셀에 함께 배치합니다.</summary>
+        public bool TryPlaceOreWall(WorldGridCoordinate coordinate, WorldOreDefinition definition)
+        {
+            return definition.IsValid && TryPlaceWallState(
+                coordinate,
+                definition.WallType,
+                definition.MaxDurability,
+                definition.ResourceType,
+                definition.DropAmount);
+        }
+
+        /// <summary>
+        /// 기존 지형 변경을 재생성할 때 벽 데이터와 보상 메타데이터를 함께 복원합니다.
+        /// 일반 API에서 광물 벽이 보상 데이터 없이 생성되는 것을 막기 위해 내부에서만 사용합니다.
+        /// </summary>
+        internal bool TryPlaceWallState(
+            WorldGridCoordinate coordinate,
+            WallType type,
+            int maxDurability,
+            WorldResourceType resourceType,
+            int resourceAmount)
+        {
+            bool isBaseWall = WorldOreDefinition.IsBaseWallType(type) &&
+                              resourceType == WorldResourceType.None && resourceAmount == 0;
+            bool isOreWall = WorldOreDefinition.IsOreWallType(type) &&
+                             WorldOreDefinition.IsSupportedResourceType(resourceType) &&
+                             resourceAmount > 0;
+            if (!IsInBounds(coordinate) || (!isBaseWall && !isOreWall) || maxDurability <= 0)
             {
                 return false;
             }
@@ -223,7 +263,12 @@ namespace Prohect_DOD_Undergird.DOD.World
                 return false;
             }
 
-            walls[index] = new WorldWallData(type, maxDurability, maxDurability);
+            walls[index] = new WorldWallData(
+                type,
+                maxDurability,
+                maxDurability,
+                resourceType,
+                resourceAmount);
             wallCount++;
             NotifyCellChanged(coordinate, WorldGridLayer.Wall, WorldGridChangeKind.Placed);
             return true;
@@ -277,7 +322,12 @@ namespace Prohect_DOD_Undergird.DOD.World
             }
 
             remainingDurability = wall.CurrentDurability - damage;
-            walls[index] = new WorldWallData(wall.Type, wall.MaxDurability, remainingDurability);
+            walls[index] = new WorldWallData(
+                wall.Type,
+                wall.MaxDurability,
+                remainingDurability,
+                wall.ResourceType,
+                wall.ResourceAmount);
             NotifyCellChanged(coordinate, WorldGridLayer.Wall, WorldGridChangeKind.Damaged);
             return true;
         }
@@ -317,11 +367,6 @@ namespace Prohect_DOD_Undergird.DOD.World
         private static bool IsSupportedFloorType(FloorType type)
         {
             return type == FloorType.Ground || type == FloorType.Soil || type == FloorType.Stone;
-        }
-
-        private static bool IsSupportedWallType(WallType type)
-        {
-            return type == WallType.Soil || type == WallType.Stone;
         }
 
         private static bool IsFinite(float value)
